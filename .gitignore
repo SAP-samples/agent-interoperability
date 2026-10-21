@@ -1,0 +1,68 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+default-env.json
+local.settings.json
+*.local
+.aws/
+.azure/
+.config/gcloud/
+.netrc
+.npmrc
+.pypirc
+credentials.json
+secrets.json
+*service-account*.json
+*client-secret*.json
+kubeconfig*
+
+# Private keys and certificate stores
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+
+# Local infrastructure state
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Node.js
+node_modules/
+dist/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# .NET
+bin/
+obj/
+
+# Local repository planning
+/repo-strucure.md
+
