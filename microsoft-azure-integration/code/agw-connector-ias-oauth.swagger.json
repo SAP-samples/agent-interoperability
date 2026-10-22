@@ -1,1 +1,91 @@
-{}
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "agw-connector-ias-oauth",
+    "description": "SAP Agent Gateway A2A connector template — direct IAS OAuth, single exchange (Approach B).",
+    "version": "1.0"
+  },
+  "host": "<region>.access.sapdas.cloud.sap",
+  "basePath": "/",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [],
+  "produces": [],
+  "paths": {
+    "/v1/a2a/<ORD_ID>/<CAD_ID>/jsonrpc": {
+      "post": {
+        "responses": {
+          "default": {
+            "description": "default",
+            "schema": {}
+          }
+        },
+        "summary": "InvokeA2A",
+        "description": "Send an A2A JSON-RPC message/send request to the agent behind the SAP Agent Gateway.",
+        "operationId": "InvokeA2A",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "jsonrpc": { "type": "string", "description": "jsonrpc" },
+                "id": { "type": "string", "description": "id" },
+                "method": { "type": "string", "description": "method" },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "object",
+                      "properties": {
+                        "messageId": { "type": "string", "description": "messageId" },
+                        "role": { "type": "string", "description": "role" },
+                        "parts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": { "type": "string", "description": "kind" },
+                              "text": { "type": "string", "description": "text" }
+                            }
+                          },
+                          "description": "parts"
+                        }
+                      },
+                      "description": "message"
+                    }
+                  },
+                  "description": "params"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {},
+  "parameters": {},
+  "responses": {},
+  "securityDefinitions": {
+    "oauth2-auth": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "https://<your-ias-tenant>.accounts400.ondemand.com/oauth2/authorize",
+      "tokenUrl": "https://<your-ias-tenant>.accounts400.ondemand.com/oauth2/token",
+      "scopes": {
+        "openid": "openid"
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth2-auth": [
+        "openid"
+      ]
+    }
+  ]
+}
