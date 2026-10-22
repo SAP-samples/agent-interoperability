@@ -1,0 +1,2 @@
+# Dev/test-only dependencies (not vendored into the runtime zip).
+pytest>=8,<9
