@@ -29,7 +29,7 @@ agent). For multi-agent routing, see
 
 ## Architecture Overview
 
-**Diagram:** [`./images/architecture.png`](./images/architecture.png)
+**Diagram:** ![`./images/architecture.png`](./images/architecture.png)
 
 ### Components
 
