@@ -11,21 +11,23 @@
 
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP-samples/agent-interoperability)](https://api.reuse.software/info/github.com/SAP-samples/agent-interoperability)
 
-Hands-on recipes for connecting AI agents from third-party platforms — Microsoft, Google, and Amazon — to agents running on the **SAP Business AI Platform** through the **SAP Agent Gateway**, with real end-to-end user identity.
+Hands-on recipes for connecting AI agents from non-SAP, third-party platforms — Amazon Web Services, Google Cloud and Microsoft — to agents running on the **SAP Business AI Platform** through the **SAP Agent Gateway**.
 
 ## Description
 
-Enterprises run SAP alongside agents built on Microsoft, Google, and AWS. For those agents to collaborate on a business process, they need more than a shared protocol — they need identity federation, trust, and a controlled path into the SAP landscape.
+Enterprises run agents on SAP Business AI Platform alongside agents built on agent platforms from Amazon Web Services, Google Cloud and Microsoft. For those agents to collaborate on a business process, they need more than a shared protocol — they need identity federation, trust, governed and a controlled path into the SAP ecosystem.
 
-These cookbooks are the **how-to** companion to the SAP Architecture Center reference architectures for agent interoperability. The Architecture Center explains the **what and why** of each integration pattern; the cookbooks here give you the **concrete, step-by-step setup** — including runnable code samples — to reproduce it.
+These cookbooks and recipes are the **how-to** companion to the SAP Architecture Center reference architectures for [agent interoperability](https://architecture.learning.sap.com/docs/ref-arch/76ec36). The Architecture Center explains the **what and why** of each integration pattern; the cookbooks here give you the **concrete, step-by-step setup and implementation guides** — including code samples — to reproduce it.
 
-- **Agent-to-Agent (A2A)** is the protocol agents use to delegate tasks to one another.
+- [**Agent-to-Agent (A2A)**](https://a2a-protocol.org/latest/) is the protocol agents use to delegate tasks to one another.
 - **SAP Agent Gateway** is the single, secured inbound hub through which external agents reach Joule Agents, Assistants, and Custom Agents on the SAP Business AI Platform.
 - **SAP Cloud Identity Services (IAS)** brokers identity so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
 
 > Reference architectures on the SAP Architecture Center:
 > [Integrating Joule Agents into Your Ecosystem](https://architecture.learning.sap.com/docs/ref-arch/ca1d2a3e/5) ·
 > [A2A and MCP for Interoperability](https://architecture.learning.sap.com/docs/ref-arch/ca1d2a3e/1)
+> [AI Agent Identity & Governance in SAP Landscapes](https://architecture.learning.sap.com/docs/ref-arch/140bdb)
+> [SAP AI Agent Hub for Enterprise AI Governance](https://architecture.learning.sap.com/docs/ref-arch/jkg4j2)
 
 ## Cookbooks
 
@@ -33,17 +35,17 @@ These cookbooks are the **how-to** companion to the SAP Architecture Center refe
 |---|---|---|
 | **Microsoft Copilot Studio** | Per-user token exchange via a Power Platform custom connector (Entra or direct IAS OAuth) | [→](./microsoft-azure-integration/) |
 | **Google Gemini Enterprise** | Three-legged OAuth with a proxy agent on Google Agent Runtime | [→](./gcp-integration/) |
-| **Amazon (AWS AgentCore)** | On-behalf-of token exchange via AWS AgentCore Identity | [→](./aws-integration/) |
+| **Amazon Web Services (AWS AgentCore)** | On-behalf-of token exchange via AWS AgentCore Identity | [→](./aws-integration/) |
 
 ## Before you start
 
-All three cookbooks share the same one-time SAP-side onboarding — creating an Agent Gateway consumer system in SAP for Me and configuring authentication. Do this once and reuse it across platforms:
+All three cookbooks share the same one-time SAP-side onboarding — creating an Agent Gateway consumer system in SAP for Me and configuring authentication. 
 
 **→ [Common setup](./common-setup/)**
 
 ## Requirements
 
-- An **SAP BTP** subaccount with **SAP Business AI Platform**, **SAP Cloud Identity Services**, and access to **SAP for Me** (cloud administrator role).
+- **SAP Business AI Platform**, **SAP Cloud Identity Services**, and access to **SAP for Me** (cloud administrator role).
 - An account on the third-party platform you want to connect (Microsoft Copilot Studio, Google Gemini Enterprise, or AWS).
 - Platform-specific prerequisites are listed at the top of each cookbook.
 
