@@ -11,37 +11,34 @@
 
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP-samples/agent-interoperability)](https://api.reuse.software/info/github.com/SAP-samples/agent-interoperability)
 
-Hands-on recipes for connecting AI agents from non-SAP, third-party platforms — Amazon Web Services, Google Cloud and Microsoft — to agents running on the **SAP Business AI Platform** through the **SAP Agent Gateway**.
+Hands-on recipes for connecting AI agents from non-SAP platforms - Amazon Web Services, Google Cloud and Microsoft - to AI agents running on the **SAP Business AI Platform** through the **SAP Agent Gateway**.
 
-## Description
+Enterprises run agents on SAP Business AI Platform alongside agents built on agent platforms from Amazon Web Services, Google Cloud, Microsoft or other. For those agents to collaborate on a business process, they need more than a shared protocol - they need identity federation, trust, governed and a controlled path into the SAP ecosystem.
 
-Enterprises run agents on SAP Business AI Platform alongside agents built on agent platforms from Amazon Web Services, Google Cloud and Microsoft. For those agents to collaborate on a business process, they need more than a shared protocol — they need identity federation, trust, governed and a controlled path into the SAP ecosystem.
+These cookbooks and recipes are the **how-to** companion to the SAP Architecture Center reference architectures for [agent interoperability](https://architecture.learning.sap.com/docs/ref-arch/76ec36). The Architecture Center explains the **what and why** of each integration pattern; the cookbooks here give you the **concrete, step-by-step setup and implementation guides** - including code samples - to reproduce it.
 
-These cookbooks and recipes are the **how-to** companion to the SAP Architecture Center reference architectures for [agent interoperability](https://architecture.learning.sap.com/docs/ref-arch/76ec36). The Architecture Center explains the **what and why** of each integration pattern; the cookbooks here give you the **concrete, step-by-step setup and implementation guides** — including code samples — to reproduce it.
-
+Definitions:
 - [**Agent-to-Agent (A2A)**](https://a2a-protocol.org/latest/) is the protocol agents use to delegate tasks to one another.
-- **SAP Agent Gateway** is the single, secured inbound hub through which external agents reach Joule Agents, Assistants, and Custom Agents on the SAP Business AI Platform.
-- **SAP Cloud Identity Services (IAS)** brokers identity so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
+- [**SAP Agent Gateway**](https://architecture.learning.sap.com/docs/ref-arch/98efa0) is the single, secured inbound hub through which external agents reach Joule Agents, Assistants, and Custom Agents on the SAP Business AI Platform. ([User Guide](https://github.com/SAP/cloud-sdk-python/blob/main/src/sap_cloud_sdk/agentgateway/user-guide.md))
+- [**SAP Cloud Identity Services (IAS)**](https://help.sap.com/docs/cloud-identity-services) brokers identity so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
 
-> Reference architectures on the SAP Architecture Center:
-> [Integrating Joule Agents into Your Ecosystem](https://architecture.learning.sap.com/docs/ref-arch/ca1d2a3e/5) ·
-> [A2A and MCP for Interoperability](https://architecture.learning.sap.com/docs/ref-arch/ca1d2a3e/1)
-> [AI Agent Identity & Governance in SAP Landscapes](https://architecture.learning.sap.com/docs/ref-arch/140bdb)
-> [SAP AI Agent Hub for Enterprise AI Governance](https://architecture.learning.sap.com/docs/ref-arch/jkg4j2)
+Related reference architectures on the [SAP Architecture Center](https://architecture.learning.sap.com/docs/ref-arch):
+- [Integrating Joule Agents into Your Ecosystem](https://architecture.learning.sap.com/docs/ref-arch/ca1d2a3e/5)
+- [A2A and MCP for Interoperability](https://architecture.learning.sap.com/docs/ref-arch/ca1d2a3e/1)
+- [AI Agent Identity & Governance in SAP Landscapes](https://architecture.learning.sap.com/docs/ref-arch/140bdb)
+- [SAP AI Agent Hub for Enterprise AI Governance](https://architecture.learning.sap.com/docs/ref-arch/jkg4j2)
 
 ## Cookbooks
 
-| Platform | Integration pattern | Cookbook |
-|---|---|---|
-| **Microsoft Copilot Studio** | Per-user token exchange via a Power Platform custom connector (Entra or direct IAS OAuth) | [→](./microsoft-azure-integration/) |
-| **Google Gemini Enterprise** | Three-legged OAuth with a proxy agent on Google Agent Runtime | [→](./gcp-integration/) |
-| **Amazon Web Services (AWS AgentCore)** | On-behalf-of token exchange via AWS AgentCore Identity | [→](./aws-integration/) |
+Before you start: make sure to complet the **→ [Common setup](./common-setup/)** - All cookbooks share the same one-time SAP-side onboarding - creating an Agent Gateway consumer system in SAP for Me and configuring authentication. 
 
-## Before you start
+The platforms offer differrent ways to build agents, and they also differenciate in the way how the integration needs to be addressed. To date, we offer the following cookbooks for the platforms and integration patterns:
 
-All three cookbooks share the same one-time SAP-side onboarding — creating an Agent Gateway consumer system in SAP for Me and configuring authentication. 
-
-**→ [Common setup](./common-setup/)**
+| Platform | Tooling | Integration pattern | Cookbook |
+|---|---|---|---|
+| Microsoft | **Microsoft Copilot Studio** | Per-user token exchange via a Power Platform custom connector (Entra or direct IAS OAuth) | [→](./microsoft-azure-integration/) |
+| GCP | **Google Gemini Enterprise** | Three-legged OAuth with a proxy agent on Google Agent Runtime | [→](./gcp-integration/) |
+| AWS | **Amazon Web Services (AWS AgentCore)** | On-behalf-of token exchange via AWS AgentCore Identity | [→](./aws-integration/) |
 
 ## Requirements
 
@@ -49,18 +46,6 @@ All three cookbooks share the same one-time SAP-side onboarding — creating an 
 - An account on the third-party platform you want to connect (Microsoft Copilot Studio, Google Gemini Enterprise, or AWS).
 - Platform-specific prerequisites are listed at the top of each cookbook.
 
-## Download and Installation
-
-Clone or browse this repository and open the cookbook for the platform you want to connect. Each platform is a self-contained folder with the same layout, so you can go straight to the one you need:
-
-```
-<platform>/
-├── README.md     the recipe — read this first
-├── images/       architecture diagrams
-└── code/         runnable code samples, with their own README
-```
-
-Start with the shared, platform-independent [common setup](./common-setup/), then follow the recipe in your platform folder. The code samples under each `code/` folder include their own README with setup and run instructions.
 
 ## Known Issues
 

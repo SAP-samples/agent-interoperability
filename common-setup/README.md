@@ -1,17 +1,13 @@
-# Common Setup — Onboarding a Third-Party Agent to SAP
+# Common Setup - Onboarding a Third-Party Agent to SAP
 
-Every cookbook in this repository shares the same one-time SAP-side onboarding. Complete it once, then follow your platform-specific recipe ([Microsoft](../microsoft-azure-integration/), [Google](../gcp-integration/), [Amazon](../aws-integration/)).
+Every cookbook in this repository shares the same one-time SAP-side onboarding. Complete it once, then follow your [platform-specific recipe](../README.md#cookbooks)
 
 Integrating a third-party agent with SAP agents through the Agent Gateway involves two stages:
 
-1. **Setup in SAP for Me** — register the external agent and wire it into the required formations.
-2. **Authentication configuration** — choose how the external agent proves its identity at runtime.
+1. **Setup in SAP for Me** - register the external agent and wire it into the required formations.
+2. **Authentication configuration** - choose how the external agent proves its identity at runtime.
 
-## Background
-
-The SAP agent landscape consists of agents embedded in SAP products plus third-party agents integrated alongside them. The **Agent Gateway** is the central access, governance, and connectivity layer: it abstracts the technical connectivity so SAP and non-SAP agents can interact across systems, enforces an explicit allow-list of permitted invocations, and records all authentication, invocation, and permission events in audit logs.
-
-## Stage 1 — Setup in SAP for Me
+## Stage 1 - Setup in SAP for Me
 
 Before a third-party agent can invoke an SAP agent, create an **Agent Gateway consumer system** in SAP for Me to represent the external agent, then assign it to **three formations in this exact order**:
 
@@ -31,9 +27,9 @@ Before a third-party agent can invoke an SAP agent, create an **Agent Gateway co
 ### Information to prepare
 
 - **List of SAP agents** the third-party agent needs to invoke (used to build the allow-list in Formation 3).
-- **System name** for the third-party agent — identifies it across all formations.
+- **System name** for the third-party agent - identifies it across all formations.
 - **Resource URL** of the third-party agent runtime.
-- **JWKS endpoint URL** *(optional)* — only if the agent has its own Identity Provider and you use JWKS-based authentication (see Stage 2). Not required for client-credentials authentication.
+- **JWKS endpoint URL** *(optional)* - only if the agent has its own Identity Provider and you use JWKS-based authentication (see Stage 2). Not required for client-credentials authentication.
 
 ### Create the consumer system
 
@@ -49,29 +45,29 @@ In SAP for Me, under **Portfolio & Products → My Product Packages → Customer
 
 Then assign the system to the three formations in the order above.
 
-## Stage 2 — Authentication configuration
+## Stage 2 - Authentication configuration
 
 After the SAP for Me setup, configure **one** of two authentication methods, depending on whether the third-party agent has its own Identity Provider (IdP):
 
-### Option A — JWKS / IdP Trust *(recommended)*
+### Option A - JWKS / IdP Trust *(recommended)*
 
 Use this if the agent has its own IdP and a JWKS endpoint URL. Trust is established between the external IdP and SAP Cloud Identity Services via the JWKS URL. At runtime, SAP Cloud Identity Services validates incoming tokens against the registered JWKS URL and, on success, issues a token forwarded to the Agent Gateway. **No client secret is generated or stored.**
 
 To configure, open the OIDC application created during onboarding in the SAP Cloud Identity Services Administration Console and, under **Trust → Trust Corporate Identity Providers**, add your external IdP.
 
-### Option B — Client Credentials
+### Option B - Client Credentials
 
 Use this if the agent has **no** IdP or JWKS URL. SAP Cloud Identity Services generates a client ID and client secret for the third-party application; those credentials are used at runtime to obtain tokens.
 
 To configure, open the same OIDC application, go to **Trust → Application APIs → Client Authentication → Secrets → Add**, and generate a client secret.
 
-> **The client secret is shown only once.** Copy and store it securely before closing the dialog — it is required for every runtime token request, and a lost secret must be regenerated.
+> **The client secret is shown only once.** Copy and store it securely before closing the dialog - it is required for every runtime token request, and a lost secret must be regenerated.
 
-## Reference — SAP Help Portal
+## Reference - SAP Help Portal
 
 - [Creating an Agent Gateway Consumer System](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/85abb1b3c5734138826f02d079b04975/a0465991ba964736a781c275ddd852db.html)
 - [Invoking an SAP Agent Through IdP Trust and JWKS-Based Integration](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/85abb1b3c5734138826f02d079b04975/e9da5158a18649168e040495b26c43bc.html)
 
 ---
 
-*Next: pick your platform recipe — [Microsoft Copilot Studio](../microsoft-azure-integration/) · [Google Gemini Enterprise](../gcp-integration/) · [Amazon AWS AgentCore](../aws-integration/).*
+*Next: pick your [platform-specific recipe](../README.md#cookbooks)*
