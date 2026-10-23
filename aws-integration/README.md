@@ -22,7 +22,7 @@ client secret or signs an assertion itself.
 - **Setup & configuration** (KMS, SAP CIS, Cognito, credential provider, deploy,
   Quick connector): see [ROADMAP.md](ROADMAP.md).
 
-![architecture](./assets/architecture.png)
+![architecture](./images/architecture.png)
 
 > **This repo ships a complete, working AWS agent** (the MCP proxy runtime under
 > `runtime/`) so the end-to-end flow runs as-is. It is a reference implementation —
