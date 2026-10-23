@@ -1,4 +1,4 @@
-# Microsoft Copilot Studio – Connector Code
+# Microsoft Copilot Studio - Connector Code
 
 This directory contains the custom connector code (C# scripts) and OpenAPI definitions for integrating Microsoft Copilot Studio with SAP agents via the SAP Agent Gateway.
 
@@ -18,7 +18,7 @@ The user interacts with the 3rd-party agent; the agent calls the SAP **Agent Gat
 
 ---
 
-### Path 1 – Front-Channel (Authorization Code Grant)
+### Path 1 - Front-Channel (Authorization Code Grant)
 
 ![Front-Channel](../images/front-channel.png)
 
@@ -33,7 +33,7 @@ The 3rd-party agent initiates an **OAuth Authorization Code Grant directly with 
 **Characteristics:**
 - Connection is configured natively in the 3rd-party platform (e.g. Copilot Studio's connection wizard)
 - The user sees a browser login popup / redirect to SAP during the connection setup
-- Authentication goes through the browser – **potential additional attack vector** (cookie in browser)
+- Authentication goes through the browser - **potential additional attack vector** (cookie in browser)
 - No pre-configured identity federation between the IdPs required (but SSO via federation is possible)
 - Straightforward if the 3rd-party platform natively supports Authorization Code Grant against SCI
 
@@ -41,11 +41,11 @@ The 3rd-party agent initiates an **OAuth Authorization Code Grant directly with 
 
 ---
 
-### Path 2 – Back-Channel (Token Exchange)
+### Path 2 - Back-Channel (Token Exchange)
 
 ![Back-Channel](../images/back-channel.png)
 
-The 3rd-party agent authenticates the user against its **own IdP** (e.g. Microsoft Entra ID) and then exchanges that token **server-to-server** with SAP Cloud Identity Services – **no browser redirect to SAP**. Requires pre-configured identity federation (trust) between the 3rd-party IdP and SCI.
+The 3rd-party agent authenticates the user against its **own IdP** (e.g. Microsoft Entra ID) and then exchanges that token **server-to-server** with SAP Cloud Identity Services - **no browser redirect to SAP**. Requires pre-configured identity federation (trust) between the 3rd-party IdP and SCI.
 
 **Flow:**
 1. User logs in to the 3rd-party agent via the 3rd-party IdP (e.g. Entra ID, browser front-channel)
@@ -54,7 +54,7 @@ The 3rd-party agent authenticates the user against its **own IdP** (e.g. Microso
 4. The agent uses the SCI-issued token to call the AGW
 
 **Characteristics:**
-- Implemented as a **Power Apps Custom Connector** – the token exchange happens in C# connector code
+- Implemented as a **Power Apps Custom Connector** - the token exchange happens in C# connector code
 - No browser redirect to SAP; the SAP auth flow is fully server-side
 - Requires identity federation (trust) configured in advance between the 3rd-party IdP and SCI
 - More resilient: no additional browser-based SAP auth flow, no browser cookies for the SAP leg
@@ -70,10 +70,8 @@ The 3rd-party agent authenticates the user against its **own IdP** (e.g. Microso
 | File | Approach | Channel | Description |
 |---|---|---|---|
 | [`agw-connector-entra.csx`](./agw-connector-entra.csx) | [Approach A](../README.md#approach-a---agent-gateway-a2a-via-custom-connector-entra-two-step-exchange) | **Back-Channel** | Connector C# script: Entra user token → Entra app token → SCI `jwt-bearer` exchange → AGW |
-| [`agw-connector-entra.swagger.json`](./agw-connector-entra.swagger.json) | Approach A | Back-Channel | OpenAPI definition – import into Power Apps to scaffold the connector |
+| [`agw-connector-entra.swagger.json`](./agw-connector-entra.swagger.json) | [Approach A](../README.md#approach-a---agent-gateway-a2a-via-custom-connector-entra-two-step-exchange) | Back-Channel | OpenAPI definition - import into Power Apps to scaffold the connector |
 | [`agw-connector-ias-oauth.csx`](./agw-connector-ias-oauth.csx) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | **Back-Channel** | Connector C# script: IAS user token → SCI `jwt-bearer` exchange → AGW (single exchange, no Entra) |
-| [`agw-connector-ias-oauth.swagger.json`](./agw-connector-ias-oauth.swagger.json) | Approach B | Back-Channel | OpenAPI definition – import into Power Apps to scaffold the connector |
-
-**Approach B is the recommended default** – no Entra app registration needed, simplest setup, still full per-user principal propagation.
+| [`agw-connector-ias-oauth.swagger.json`](./agw-connector-ias-oauth.swagger.json) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | Back-Channel | OpenAPI definition - import into Power Apps to scaffold the connector |
 
 Both Approach A and B follow the **Back-Channel** pattern: the user-facing browser flow is against the 3rd-party IdP only; the SAP token exchange happens server-side in the connector code.

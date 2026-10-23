@@ -39,8 +39,8 @@ When a 3rd-party agent calls SAP agents on behalf of a user, there are two IAM i
 
 | Pattern | How the user's SAP identity is established | Browser involvement |
 |---|---|---|
-| **Front-Channel** (Authorization Code Grant) | The 3rd-party agent initiates an OAuth Authorization Code flow **directly with SAP Cloud Identity Services** – the user's browser is redirected to SCI/IAS for login | Browser redirected to SAP (cookie-based, potential extra attack vector) |
-| **Back-Channel** (Token Exchange) | The user authenticates against the **3rd-party IdP** (e.g. Entra ID); the agent exchanges that token server-to-server with SCI – no browser redirect to SAP | No SAP browser flow; exchange happens in connector code |
+| **Front-Channel** (Authorization Code Grant) | The 3rd-party agent initiates an OAuth Authorization Code flow **directly with SAP Cloud Identity Services** - the user's browser is redirected to SCI/IAS for login | Browser redirected to SAP (cookie-based, potential extra attack vector) |
+| **Back-Channel** (Token Exchange) | The user authenticates against the **3rd-party IdP** (e.g. Entra ID); the agent exchanges that token server-to-server with SCI - no browser redirect to SAP | No SAP browser flow; exchange happens in connector code |
 
 **Microsoft Copilot uses the Back-Channel pattern** (Custom Connector via Power Apps). See [`./code/README.md`](./code/README.md) for a detailed explanation with architecture diagrams.
 
@@ -48,7 +48,7 @@ When a 3rd-party agent calls SAP agents on behalf of a user, there are two IAM i
 
 ## Which approach?
 
-Reminder: make sure to have completed the SAP-side **→ [Common setup](./common-setup/)**
+Reminder: make sure to have completed the SAP-side **→ [Common setup](../common-setup/README.md)**
 
 For calling an agent **behind the Agent Gateway** from Copilot Studio, this cookbook gives three variants:
 
