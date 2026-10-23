@@ -30,8 +30,8 @@ fi
 : "${AWS_ACCOUNT:?set it in .envrc}"
 : "${COGNITO_USER_POOL_ID:?set it in .envrc}"
 : "${COGNITO_APP_CLIENT_ID:?set it in .envrc}"
-: "${IAS_CREDENTIAL_PROVIDER:?set it in .envrc}"
-: "${IAS_KMS_KEY_ID:?set it in .envrc}"
+: "${CIS_CREDENTIAL_PROVIDER:?set it in .envrc}"
+: "${CIS_KMS_KEY_ID:?set it in .envrc}"
 : "${AGENT_CONFIG_TABLE:?set it in .envrc}"
 : "${AGENT_CONFIG_KEY:?set it in .envrc}"
 : "${CONFIG_CACHE_TTL_SECONDS:?set it in .envrc}"
@@ -59,7 +59,7 @@ EOF
 )
 # Least-privilege policy. The WorkloadToken resource is scoped to THIS runtime's workload
 # identity (\${RUNTIME_NAME}-*), so the platform can mint this runtime's WorkloadAccessToken
-# for the IAS on-behalf-of exchange.
+# for the CIS on-behalf-of exchange.
 POLICY=$(cat <<EOF
 {"Version":"2012-10-17","Statement":[
  {"Sid":"ReadCodeArtifact","Effect":"Allow","Action":["s3:GetObject","s3:GetObjectVersion","s3:ListBucket","s3:GetBucketLocation"],"Resource":["arn:aws:s3:::$BUCKET","arn:aws:s3:::$BUCKET/$S3_PREFIX/*"]},
@@ -68,7 +68,7 @@ POLICY=$(cat <<EOF
  {"Sid":"ResourceOauth2","Effect":"Allow","Action":"bedrock-agentcore:GetResourceOauth2Token","Resource":"*"},
  {"Sid":"InvokeModel","Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"],"Resource":"*"},
  {"Sid":"ReadConfig","Effect":"Allow","Action":["dynamodb:GetItem"],"Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT:table/${AGENT_CONFIG_TABLE}"},
- {"Sid":"SignIasAssertion","Effect":"Allow","Action":"kms:Sign","Resource":"arn:aws:kms:$REGION:$ACCOUNT:key/${IAS_KMS_KEY_ID}"}
+ {"Sid":"SignCisAssertion","Effect":"Allow","Action":"kms:Sign","Resource":"arn:aws:kms:$REGION:$ACCOUNT:key/${CIS_KMS_KEY_ID}"}
 ]}
 EOF
 )
@@ -93,9 +93,9 @@ echo "==> 3/3 create or update the MCP runtime"
 # the login with invalid_scope.
 AUTHZ="{\"customJWTAuthorizer\":{\"discoveryUrl\":\"${COGNITO_ISSUER}/.well-known/openid-configuration\",\"allowedAudience\":[\"${COGNITO_APP_CLIENT_ID}\"],\"allowedScopes\":[\"openid\",\"email\",\"profile\"]}}"
 # AGENT_CONFIG_KEY=current -> shares the live settings row (read-only here; runtime never writes config).
-# Only the vars the runtime actually reads are set here (AWS_REGION, IAS_PROVIDER_NAME fallback,
+# Only the vars the runtime actually reads are set here (AWS_REGION, CIS_PROVIDER_NAME fallback,
 # AGENT_CONFIG_TABLE/KEY, CONFIG_CACHE_TTL_SECONDS). Cognito issuer/audience live in AUTHZ, not env.
-ENV="{\"AWS_REGION\":\"${REGION}\",\"RUNTIME_NAME\":\"${RUNTIME_NAME}\",\"IAS_PROVIDER_NAME\":\"${IAS_CREDENTIAL_PROVIDER}\",\"AGENT_CONFIG_TABLE\":\"${AGENT_CONFIG_TABLE}\",\"AGENT_CONFIG_KEY\":\"${AGENT_CONFIG_KEY}\",\"CONFIG_CACHE_TTL_SECONDS\":\"${CONFIG_CACHE_TTL_SECONDS}\"}"
+ENV="{\"AWS_REGION\":\"${REGION}\",\"RUNTIME_NAME\":\"${RUNTIME_NAME}\",\"CIS_PROVIDER_NAME\":\"${CIS_CREDENTIAL_PROVIDER}\",\"AGENT_CONFIG_TABLE\":\"${AGENT_CONFIG_TABLE}\",\"AGENT_CONFIG_KEY\":\"${AGENT_CONFIG_KEY}\",\"CONFIG_CACHE_TTL_SECONDS\":\"${CONFIG_CACHE_TTL_SECONDS}\"}"
 ARTIFACT="{\"codeConfiguration\":{\"code\":{\"s3\":{\"bucket\":\"$BUCKET\",\"prefix\":\"$S3_KEY\"}},\"runtime\":\"PYTHON_3_13\",\"entryPoint\":[\"mcp_server.py\"]}}"
 
 EXISTING=$(aws bedrock-agentcore-control list-agent-runtimes --region "$REGION" \
@@ -118,7 +118,7 @@ else
   echo "    creating new runtime"
   aws bedrock-agentcore-control create-agent-runtime \
     --agent-runtime-name "$RUNTIME_NAME" \
-    --description "LLM-backed MCP front for Quick -> AgentService -> IAS -> SAP" \
+    --description "LLM-backed MCP front for Quick -> AgentService -> CIS -> SAP" \
     --agent-runtime-artifact "$ARTIFACT" \
     --role-arn "$ROLE_ARN" \
     --network-configuration '{"networkMode":"PUBLIC"}' \

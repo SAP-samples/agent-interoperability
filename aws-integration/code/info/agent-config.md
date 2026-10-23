@@ -17,8 +17,8 @@ The DynamoDB item (`config_id = <AGENT_CONFIG_KEY>`) stores the runtime configur
     }
   ],
   "ias": {
-    "resource_urn": "<IAS_RESOURCE_URN>",
-    "credential_provider_name": "<IAS_CREDENTIAL_PROVIDER>"
+    "resource_urn": "<CIS_RESOURCE_URN>",
+    "credential_provider_name": "<CIS_CREDENTIAL_PROVIDER>"
   },
   "rate_limit": {
     "window_seconds": 60,
@@ -39,7 +39,7 @@ The DynamoDB item (`config_id = <AGENT_CONFIG_KEY>`) stores the runtime configur
 | `agents[].description` | Shown to the LLM as the tool description — be specific about what the agent does. |
 | `agents[].gateway_url` | SAP Agent Gateway JSON-RPC endpoint (must end in `/jsonrpc`, host must be `*.sapdas.cloud.sap`). |
 | `agents[].aud_urn` | Optional per-agent audience URN override. If `null`, falls back to `ias.resource_urn`. |
-| `ias.resource_urn` | URN identifying the Agent Gateway to SAP IAS, e.g. `urn:sap:identity:application:provider:name:agent-gateway`. |
+| `ias.resource_urn` | URN identifying the Agent Gateway to SAP CIS, e.g. `urn:sap:identity:application:provider:name:agent-gateway`. |
 | `ias.credential_provider_name` | Name of the AgentCore Identity credential provider created in Task 5. |
 | `rate_limit.window_seconds` | Rolling window for the per-session tool-call counter. |
 | `rate_limit.max_tool_calls` | Maximum tool calls allowed within the window. |

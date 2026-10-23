@@ -2,7 +2,7 @@
 
 LLM-backed variant: instead of forwarding the request to one hardcoded SAP agent,
 this delegates to the shared AgentService brain (runtime/agent.py). AgentService
-runs a Bedrock tool loop that decides which SAP agent(s) to call, mints the IAS
+runs a Bedrock tool loop that decides which SAP agent(s) to call, mints the CIS
 on-behalf-of token per agent, and calls SAP Agent Gateway over A2A. This module is
 the MCP front door to that brain.
 
@@ -59,7 +59,7 @@ def _user_identity(token: str) -> tuple[str, str | None]:
 
     Returns (cache_key, email_or_none). The bearer is a Cognito access token that
     carries `email` (added by a pre-token-generation Lambda; falls back to `sub` if
-    absent). The authoritative user identity for the IAS OBO is carried by the
+    absent). The authoritative user identity for the CIS OBO is carried by the
     AgentCore workload token, so this decode is only for the token cache key +
     logging.
     """

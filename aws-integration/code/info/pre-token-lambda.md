@@ -4,10 +4,10 @@ Amazon Quick presents the Cognito **access token** as the Bearer on every MCP
 request. The access token is missing claims the downstream chain needs, so a
 **V2 pre-token-generation Lambda trigger** adds them:
 
-- access token `email` — SAP IAS resolves the end user by email during the
-  on-behalf-of exchange (it becomes the IAS token's `sub`).
+- access token `email` — SAP CIS resolves the end user by email during the
+  on-behalf-of exchange (it becomes the CIS token's `sub`).
 - access token `aud` — the runtime authorizer checks `aud` against the
-  app client id, and the SAP IAS OBO trust rejects an assertion with no `aud`.
+  app client id, and the SAP CIS OBO trust rejects an assertion with no `aud`.
   Cognito only allows `aud` on the access token when it equals the current
   session's app client id, so it is derived from `event.callerContext.clientId` —
   never hardcoded.
@@ -27,10 +27,10 @@ Runtime `python3.13`, handler `lambda_function.handler`.
 Adds the claims the downstream chain needs, additively (it only ever adds claims
 and never raises, so it cannot block sign-in):
 
-* access token `email` — SAP IAS resolves the end user by email during the
-  on-behalf-of exchange (it becomes the IAS token's `sub`).
+* access token `email` — SAP CIS resolves the end user by email during the
+  on-behalf-of exchange (it becomes the CIS token's `sub`).
 * access token `aud` — the runtime authorizer checks `aud` against the
-  app client id, and the SAP IAS OBO trust rejects an assertion with no `aud`.
+  app client id, and the SAP CIS OBO trust rejects an assertion with no `aud`.
   Cognito only allows `aud` on the access token when it equals the current
   session's app client id, so it is derived from event.callerContext.clientId
   (never hardcoded).

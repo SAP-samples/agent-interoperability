@@ -1,8 +1,8 @@
 """Authenticated A2A calls to SAP Agent Gateway.
 
-The outbound leg of the chain: once the IAS OBO token is in hand, the runtime
+The outbound leg of the chain: once the CIS OBO token is in hand, the runtime
 speaks the A2A protocol (JSON-RPC `message/send`) to the SAP agent's endpoint,
-passing the IAS token as the Bearer. Responses are A2A task objects, parsed by the
+passing the CIS token as the Bearer. Responses are A2A task objects, parsed by the
 caller (runtime/agent.py).
 """
 

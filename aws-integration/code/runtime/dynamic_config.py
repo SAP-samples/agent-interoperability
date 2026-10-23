@@ -26,7 +26,7 @@ class ConfigStore:
 
     @property
     def table_name(self) -> str:
-        return os.environ.get("AGENT_CONFIG_TABLE", "aws-agentcore-ias-config")
+        return os.environ.get("AGENT_CONFIG_TABLE", "aws-agentcore-cis-config")
 
     @property
     def key(self) -> str:

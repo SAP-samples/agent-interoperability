@@ -3,9 +3,9 @@
 The "brain" behind the MCP front door. For each SAP agent in the live config it
 exposes two Bedrock tools — `ask_<id>` (send a task) and `capabilities_<id>` (fetch
 the agent card) — then runs a Converse tool loop: the model picks a tool, this
-module performs the IAS OBO exchange (runtime/ias.py) and the A2A call
+module performs the CIS OBO exchange (runtime/cis.py) and the A2A call
 (runtime/sap_gateway.py), feeds the result back, and repeats until the model
-produces a final answer. Each ask/capabilities call mints its own user-scoped IAS
+produces a final answer. Each ask/capabilities call mints its own user-scoped CIS
 token, so identity is enforced per SAP call, not once at the edge.
 """
 
@@ -22,7 +22,7 @@ import boto3
 
 from runtime import resume_token
 from runtime.config import RuntimeConfig
-from runtime.ias import IasTokenProvider
+from runtime.cis import CisTokenProvider
 from runtime.rate_limit import RateLimitExceeded, SlidingWindowRateLimiter
 from runtime.sap_gateway import SapGatewayError, fetch_agent_card, send_message
 
@@ -94,7 +94,7 @@ class ConversationStore:
 class AgentService:
     def __init__(self) -> None:
         self._bedrock: Any | None = None
-        self._tokens = IasTokenProvider()
+        self._tokens = CisTokenProvider()
         self._sessions = ConversationStore()
         self._limiter = SlidingWindowRateLimiter()
 

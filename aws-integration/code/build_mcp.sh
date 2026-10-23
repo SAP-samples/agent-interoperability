@@ -45,4 +45,4 @@ echo "==> zip"
 ( cd "$BUILD_DIR" && zip -q -r "$ZIP_PATH" . )
 echo "built: $ZIP_PATH ($(du -h "$ZIP_PATH" | cut -f1))"
 echo "entrypoint check:"
-unzip -l "$ZIP_PATH" | grep -E "mcp_server.py|runtime/ias.py|runtime/agent.py" | sed 's/^/    /'
+unzip -l "$ZIP_PATH" | grep -E "mcp_server.py|runtime/cis.py|runtime/agent.py" | sed 's/^/    /'

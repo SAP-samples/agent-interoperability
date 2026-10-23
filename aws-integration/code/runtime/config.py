@@ -46,7 +46,7 @@ class SapAgent:
         gateway = _https_url(str(raw.get("gateway_url", "")), "gateway_url")
         host = urlparse(gateway).hostname or ""
         # Guardrail: only accept real SAP Agent Gateway hosts, so a misconfigured
-        # row can't point the IAS-authenticated call at an arbitrary endpoint.
+        # row can't point the CIS-authenticated call at an arbitrary endpoint.
         if not host.endswith(".sapdas.cloud.sap"):
             raise ValueError("SAP agent URLs must use an SAP Agent Gateway host")
         aud = str(raw.get("aud_urn") or "").strip() or None
@@ -71,11 +71,11 @@ class IasSettings:
         provider = str(
             raw.get(
                 "credential_provider_name",
-                os.environ.get("IAS_PROVIDER_NAME", ""),
+                os.environ.get("CIS_PROVIDER_NAME", ""),
             )
         ).strip()
         if not resource.startswith("urn:") or not provider:
-            raise ValueError("invalid IAS resource URN or AgentCore credential provider")
+            raise ValueError("invalid CIS resource URN or AgentCore credential provider")
         return cls(resource, provider)
 
 
@@ -140,7 +140,7 @@ class RuntimeConfig:
         return agent.aud_urn or self.ias.resource_urn
 
     def fingerprint(self) -> str:
-        # Stable identity of the IAS-relevant settings. ias.py keys its token cache
+        # Stable identity of the CIS-relevant settings. cis.py keys its token cache
         # on this, so changing the provider/resource/version invalidates old tokens.
         stable = {
             "provider": self.ias.credential_provider_name,
@@ -174,7 +174,7 @@ def default_config() -> RuntimeConfig:
             "ias": {
                 "resource_urn": "urn:sap:identity:application:provider:name:agent-gateway",
                 "credential_provider_name": os.environ.get(
-                    "IAS_PROVIDER_NAME", "<ias-credential-provider-name>"
+                    "CIS_PROVIDER_NAME", "<cis-credential-provider-name>"
                 ),
             },
             "rate_limit": {"window_seconds": 60, "max_tool_calls": 30},

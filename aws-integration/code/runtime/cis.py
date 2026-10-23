@@ -1,13 +1,13 @@
-"""AgentCore Identity-managed IAS token retrieval with in-memory caching.
+"""AgentCore Identity-managed CIS token retrieval with in-memory caching.
 
 This is the on-behalf-of (OBO) step of the identity chain. The runtime never holds
-an IAS client secret or signs an assertion itself: it hands AgentCore Identity the
-user's WorkloadAccessToken (WAT) and asks it to exchange that for a user-scoped IAS
+an CIS client secret or signs an assertion itself: it hands AgentCore Identity the
+user's WorkloadAccessToken (WAT) and asks it to exchange that for a user-scoped CIS
 token whose audience is SAP Agent Gateway. AgentCore Identity performs the
-`private_key_jwt` client authentication (KMS-signed) against IAS behind the scenes.
+`private_key_jwt` client authentication (KMS-signed) against CIS behind the scenes.
 
 Tokens are cached per (user, resource, config fingerprint) until shortly before
-expiry, so a burst of tool calls for the same user reuses one IAS token.
+expiry, so a burst of tool calls for the same user reuses one CIS token.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ import boto3
 from runtime.config import RuntimeConfig
 
 
-class IasExchangeError(RuntimeError):
+class CisExchangeError(RuntimeError):
     pass
 
 
@@ -47,8 +47,8 @@ class _CachedToken:
     expires_at: float
 
 
-class IasTokenProvider:
-    """Retrieve IAS OBO tokens through AgentCore Identity."""
+class CisTokenProvider:
+    """Retrieve CIS OBO tokens through AgentCore Identity."""
 
     def __init__(self, max_users: int = 256, refresh_leeway: int = 30) -> None:
         self._max = max_users
@@ -74,7 +74,7 @@ class IasTokenProvider:
         region: str,
     ) -> str:
         if not workload_access_token:
-            raise IasExchangeError("AgentCore workload identity token is missing")
+            raise CisExchangeError("AgentCore workload identity token is missing")
         # Fingerprint is part of the key so a config change (e.g. a new credential
         # provider or resource URN) can't serve a stale token from the cache.
         key = (user_email, resource_urn, config.fingerprint())
@@ -85,9 +85,9 @@ class IasTokenProvider:
                 self._tokens.move_to_end(key)
                 return cached.token
         try:
-            # The OBO exchange: swap the workload token for a user-scoped IAS token.
+            # The OBO exchange: swap the workload token for a user-scoped CIS token.
             # `resources` sets the audience (SAP Agent Gateway's resource URN) and
-            # token_format=jwt asks IAS for a JWT rather than an opaque token.
+            # token_format=jwt asks CIS for a JWT rather than an opaque token.
             payload = self._client(region).get_resource_oauth2_token(
                 workloadIdentityToken=workload_access_token,
                 resourceCredentialProviderName=config.ias.credential_provider_name,
@@ -99,10 +99,10 @@ class IasTokenProvider:
         except Exception as exc:
             details = getattr(exc, "response", {}).get("Error", {})
             message = str(details.get("Message", type(exc).__name__))[:500]
-            raise IasExchangeError(f"AgentCore Identity IAS exchange failed: {message}") from exc
+            raise CisExchangeError(f"AgentCore Identity CIS exchange failed: {message}") from exc
         token = payload.get("accessToken")
         if not isinstance(token, str) or not token:
-            raise IasExchangeError("AgentCore Identity returned no IAS access token")
+            raise CisExchangeError("AgentCore Identity returned no CIS access token")
         expires_at = _jwt_exp(token) or now + 300  # assume 5 min if the token has no exp
         with self._lock:
             self._tokens[key] = _CachedToken(token, expires_at)

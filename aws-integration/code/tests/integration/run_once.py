@@ -5,7 +5,7 @@ Logs into Cognito via auth-code + PKCE (browser), takes the resulting **access
 token** (the Bearer Amazon Quick sends on every MCP request), then drives
 initialize -> tools/list -> tools/call sap_assistant against the AgentCore
 Runtime MCP endpoint. This exercises the full chain the cookbook describes:
-Cognito -> runtime authorizer -> runtime -> IAS OBO -> SAP Agent Gateway.
+Cognito -> runtime authorizer -> runtime -> CIS OBO -> SAP Agent Gateway.
 
 No pip installs: uses urllib + http.server from the stdlib.
 
