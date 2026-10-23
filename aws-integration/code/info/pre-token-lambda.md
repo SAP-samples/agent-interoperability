@@ -6,7 +6,7 @@ request. The access token is missing claims the downstream chain needs, so a
 
 - access token `email` — SAP IAS resolves the end user by email during the
   on-behalf-of exchange (it becomes the IAS token's `sub`).
-- access token `aud` — the AgentCore Gateway authorizer checks `aud` against the
+- access token `aud` — the runtime authorizer checks `aud` against the
   app client id, and the SAP IAS OBO trust rejects an assertion with no `aud`.
   Cognito only allows `aud` on the access token when it equals the current
   session's app client id, so it is derived from `event.callerContext.clientId` —
@@ -29,7 +29,7 @@ and never raises, so it cannot block sign-in):
 
 * access token `email` — SAP IAS resolves the end user by email during the
   on-behalf-of exchange (it becomes the IAS token's `sub`).
-* access token `aud` — the AgentCore Gateway authorizer checks `aud` against the
+* access token `aud` — the runtime authorizer checks `aud` against the
   app client id, and the SAP IAS OBO trust rejects an assertion with no `aud`.
   Cognito only allows `aud` on the access token when it equals the current
   session's app client id, so it is derived from event.callerContext.clientId

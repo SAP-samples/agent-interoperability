@@ -45,6 +45,8 @@ class SapAgent:
             raise ValueError("SAP agent name and description are required")
         gateway = _https_url(str(raw.get("gateway_url", "")), "gateway_url")
         host = urlparse(gateway).hostname or ""
+        # Guardrail: only accept real SAP Agent Gateway hosts, so a misconfigured
+        # row can't point the IAS-authenticated call at an arbitrary endpoint.
         if not host.endswith(".sapdas.cloud.sap"):
             raise ValueError("SAP agent URLs must use an SAP Agent Gateway host")
         aud = str(raw.get("aud_urn") or "").strip() or None
@@ -138,6 +140,8 @@ class RuntimeConfig:
         return agent.aud_urn or self.ias.resource_urn
 
     def fingerprint(self) -> str:
+        # Stable identity of the IAS-relevant settings. ias.py keys its token cache
+        # on this, so changing the provider/resource/version invalidates old tokens.
         stable = {
             "provider": self.ias.credential_provider_name,
             "resource": self.ias.resource_urn,
@@ -149,7 +153,7 @@ class RuntimeConfig:
 def default_config() -> RuntimeConfig:
     """Fallback config used only if the DynamoDB config row is missing/unreadable.
 
-    The live config normally comes from the DynamoDB row (see docs/agent-config.md);
+    The live config normally comes from the DynamoDB row (see info/agent-config.md);
     replace the placeholders below with your own agent(s).
     """
     return RuntimeConfig.parse(

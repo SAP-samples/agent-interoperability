@@ -4,8 +4,8 @@
 Logs into Cognito via auth-code + PKCE (browser), takes the resulting **access
 token** (the Bearer Amazon Quick sends on every MCP request), then drives
 initialize -> tools/list -> tools/call sap_assistant against the AgentCore
-Gateway MCP endpoint. This exercises the full chain the cookbook describes:
-Cognito -> Gateway authorizer -> runtime -> IAS OBO -> SAP Agent Gateway.
+Runtime MCP endpoint. This exercises the full chain the cookbook describes:
+Cognito -> runtime authorizer -> runtime -> IAS OBO -> SAP Agent Gateway.
 
 No pip installs: uses urllib + http.server from the stdlib.
 
@@ -13,7 +13,7 @@ Configuration is read from the environment (copy env.example -> .envrc and let
 direnv export it, or `source .envrc` first):
   COGNITO_APP_CLIENT_ID   Cognito app client id (PKCE public client).
   COGNITO_DOMAIN          Cognito Hosted UI domain (https://...).
-  MCP_GATEWAY_URL         Gateway target /invocations URL.
+  MCP_ENDPOINT_URL        Runtime /invocations URL.
 
 Prerequisite: the Cognito app client must allow this script's loopback redirect
 URI (http://localhost:8765/callback) in its callback URLs, in addition to the
@@ -36,7 +36,7 @@ def _env(name: str) -> str:
 
 CLIENT_ID = _env("COGNITO_APP_CLIENT_ID")
 COGNITO_DOMAIN = _env("COGNITO_DOMAIN").rstrip("/")
-GATEWAY_URL = _env("MCP_GATEWAY_URL")
+ENDPOINT_URL = _env("MCP_ENDPOINT_URL")
 # NOTE: this loopback redirect URI must be listed in the Cognito app client's
 # allowed callback URLs (in addition to the Amazon Quick callback), or the login
 # redirect will fail with a redirect_mismatch error.
@@ -117,7 +117,7 @@ def mcp(token: str, method: str, params: dict | None = None, session: str | None
     }
     if session:
         headers["mcp-session-id"] = session
-    req = urllib.request.Request(GATEWAY_URL, data=json.dumps(body).encode(), headers=headers)
+    req = urllib.request.Request(ENDPOINT_URL, data=json.dumps(body).encode(), headers=headers)
     try:
         r = urllib.request.urlopen(req, timeout=120)
     except urllib.error.HTTPError as e:

@@ -1,0 +1,16 @@
+# Local environment config (per-user; filled-in copy of env.example)
+.envrc
+
+# Local AI assistant instructions (not part of the published cookbook)
+CLAUDE.md
+
+# Build artifacts
+build-mcp/
+deployment-mcp.zip
+
+# Deploy output (transient; written by deploy.sh)
+.mcp-llm-runtime.json
+
+# Python
+__pycache__/
+*.pyc

@@ -1,4 +1,13 @@
-"""Bedrock router with one dynamic pair of A2A tools per configured SAP agent."""
+"""Bedrock router with one dynamic pair of A2A tools per configured SAP agent.
+
+The "brain" behind the MCP front door. For each SAP agent in the live config it
+exposes two Bedrock tools — `ask_<id>` (send a task) and `capabilities_<id>` (fetch
+the agent card) — then runs a Converse tool loop: the model picks a tool, this
+module performs the IAS OBO exchange (runtime/ias.py) and the A2A call
+(runtime/sap_gateway.py), feeds the result back, and repeats until the model
+produces a final answer. Each ask/capabilities call mints its own user-scoped IAS
+token, so identity is enforced per SAP call, not once at the edge.
+"""
 
 from __future__ import annotations
 
@@ -18,8 +27,8 @@ from runtime.rate_limit import RateLimitExceeded, SlidingWindowRateLimiter
 from runtime.sap_gateway import SapGatewayError, fetch_agent_card, send_message
 
 logger = logging.getLogger(__name__)
-_MAX_TURNS = 24
-_MAX_TOOL_ROUNDS = 6
+_MAX_TURNS = 24  # conversation-history cap kept per session (trims oldest turns)
+_MAX_TOOL_ROUNDS = 6  # max model<->tool round-trips per request, guards against a runaway loop
 
 
 def _extract_a2a_task(response: Any) -> dict[str, Any]:
@@ -277,6 +286,7 @@ class AgentService:
             messages.append(assistant)
             tool_uses = [part["toolUse"] for part in assistant["content"] if "toolUse" in part]
             if not tool_uses:
+                # No tool call this round -> the model has produced its final answer.
                 text = "".join(part.get("text", "") for part in assistant["content"]).strip()
                 self._sessions.put(session_id, messages)
                 out: dict[str, Any] = {"status": "ok", "message": text, "tools": used}
@@ -303,7 +313,7 @@ class AgentService:
                     ValueError,
                     KeyError,
                 ) as exc:
-                    logger.warning("tool %s failed: %s", name, type(exc).__name__)
+                    logger.warning("tool %s failed: %s: %s", name, type(exc).__name__, exc)
                     result = {"error": str(exc)}
                     status = "error"
                 if isinstance(result, dict) and result.get("_resume_token"):

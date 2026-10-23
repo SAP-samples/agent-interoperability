@@ -1,4 +1,10 @@
-"""Authenticated A2A calls to SAP Agent Gateway."""
+"""Authenticated A2A calls to SAP Agent Gateway.
+
+The outbound leg of the chain: once the IAS OBO token is in hand, the runtime
+speaks the A2A protocol (JSON-RPC `message/send`) to the SAP agent's endpoint,
+passing the IAS token as the Bearer. Responses are A2A task objects, parsed by the
+caller (runtime/agent.py).
+"""
 
 from __future__ import annotations
 
@@ -23,8 +29,10 @@ def _call(url: str, token: str, *, body: dict[str, Any] | None = None) -> Any:
     if body is not None:
         request.add_header("Content-Type", "application/json")
     try:
-        with urlopen(request, timeout=90) as response:  # noqa: S310 - URL is validated config
-            raw = response.read(1_000_001)
+        # 180s: SAP agent execution latency is highly variable and slow runs would
+        # otherwise trip a shorter client timeout (see ROADMAP Troubleshooting).
+        with urlopen(request, timeout=180) as response:  # noqa: S310 - URL is validated config
+            raw = response.read(1_000_001)  # read one byte past the cap to detect overflow
     except HTTPError as exc:
         detail = exc.read(4_000).decode("utf-8", errors="replace")
         raise SapGatewayError(f"SAP Agent Gateway returned HTTP {exc.code}: {detail}") from exc
@@ -53,6 +61,8 @@ def send_message(
         "role": "user",
         "parts": [{"kind": "text", "text": message}],
     }
+    # contextId/taskId resume an existing A2A task (multi-turn input-required flow);
+    # omitting both starts a fresh task.
     if context_id:
         msg["contextId"] = context_id
     if task_id:

@@ -1,4 +1,14 @@
-"""AgentCore Identity-managed IAS token retrieval with in-memory caching."""
+"""AgentCore Identity-managed IAS token retrieval with in-memory caching.
+
+This is the on-behalf-of (OBO) step of the identity chain. The runtime never holds
+an IAS client secret or signs an assertion itself: it hands AgentCore Identity the
+user's WorkloadAccessToken (WAT) and asks it to exchange that for a user-scoped IAS
+token whose audience is SAP Agent Gateway. AgentCore Identity performs the
+`private_key_jwt` client authentication (KMS-signed) against IAS behind the scenes.
+
+Tokens are cached per (user, resource, config fingerprint) until shortly before
+expiry, so a burst of tool calls for the same user reuses one IAS token.
+"""
 
 from __future__ import annotations
 
@@ -20,6 +30,8 @@ class IasExchangeError(RuntimeError):
 
 
 def _jwt_exp(token: str) -> float | None:
+    # Read `exp` from the JWT payload to drive cache expiry. Unverified decode:
+    # the token is validated by its consumer (SAP Agent Gateway), not here.
     try:
         encoded = token.split(".")[1]
         encoded += "=" * (-len(encoded) % 4)
@@ -63,6 +75,8 @@ class IasTokenProvider:
     ) -> str:
         if not workload_access_token:
             raise IasExchangeError("AgentCore workload identity token is missing")
+        # Fingerprint is part of the key so a config change (e.g. a new credential
+        # provider or resource URN) can't serve a stale token from the cache.
         key = (user_email, resource_urn, config.fingerprint())
         now = time.time()
         with self._lock:
@@ -71,6 +85,9 @@ class IasTokenProvider:
                 self._tokens.move_to_end(key)
                 return cached.token
         try:
+            # The OBO exchange: swap the workload token for a user-scoped IAS token.
+            # `resources` sets the audience (SAP Agent Gateway's resource URN) and
+            # token_format=jwt asks IAS for a JWT rather than an opaque token.
             payload = self._client(region).get_resource_oauth2_token(
                 workloadIdentityToken=workload_access_token,
                 resourceCredentialProviderName=config.ias.credential_provider_name,
@@ -86,10 +103,10 @@ class IasTokenProvider:
         token = payload.get("accessToken")
         if not isinstance(token, str) or not token:
             raise IasExchangeError("AgentCore Identity returned no IAS access token")
-        expires_at = _jwt_exp(token) or now + 300
+        expires_at = _jwt_exp(token) or now + 300  # assume 5 min if the token has no exp
         with self._lock:
             self._tokens[key] = _CachedToken(token, expires_at)
             self._tokens.move_to_end(key)
-            while len(self._tokens) > self._max:
+            while len(self._tokens) > self._max:  # bounded LRU: evict least-recently-used
                 self._tokens.popitem(last=False)
         return token

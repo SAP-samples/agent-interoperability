@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 import uuid
 
 from mcp.server.fastmcp import FastMCP
@@ -29,8 +30,9 @@ from mcp.server.transport_security import TransportSecuritySettings
 from runtime.agent import SERVICE
 from runtime.dynamic_config import get_config_store
 
+_RUNTIME_NAME = os.environ.get("RUNTIME_NAME", "agentcore-mcp")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
-log = logging.getLogger("agentcore-ias-mcp-llm")
+log = logging.getLogger(_RUNTIME_NAME)
 
 # Per-request state (see module docstring for why a dict is safe here).
 _REQ: dict[str, str] = {"bearer": "", "wat": "", "session_id": ""}
@@ -44,7 +46,7 @@ _REQ: dict[str, str] = {"bearer": "", "wat": "", "session_id": ""}
 # forwarded Host header with HTTP 421. Passing host="0.0.0.0" avoids that, and we
 # also disable the protection explicitly since AgentCore fronts the ingress.
 mcp = FastMCP(
-    "aws-agentcore-ias-llm",
+    _RUNTIME_NAME,
     host="0.0.0.0",
     port=8000,
     stateless_http=True,
