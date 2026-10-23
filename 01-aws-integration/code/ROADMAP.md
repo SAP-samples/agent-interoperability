@@ -11,7 +11,7 @@ until it reaches SAP Agent Gateway as a user-scoped CIS token. The agent runs
 > provider, but it is one option, not a requirement — any OIDC-compliant provider
 > works, including a corporate IdP (Entra ID, Okta, Ping, …) federated into **AWS
 > IAM Identity Center**. Wherever a step says "Cognito", read it as "the configured
-> OIDC provider". See the note in [README.md](README.md) for the full explanation.
+> OIDC provider". See the note in [README.md](../README.md) for the full explanation.
 
 ---
 
