@@ -30,15 +30,15 @@ Related reference architectures on the [SAP Architecture Center](https://archite
 
 ## Cookbooks
 
-Before you start: make sure to complet the **→ [Common setup](./common-setup/)** - All cookbooks share the same one-time SAP-side onboarding - creating an Agent Gateway consumer system in SAP for Me and configuring authentication. 
+Before you start: make sure to complet the **→ [Common setup](./00-common-setup/)** - All cookbooks share the same one-time SAP-side onboarding - creating an Agent Gateway consumer system in SAP for Me and configuring authentication. 
 
 The platforms offer differrent ways to build agents, and they also differenciate in the way how the integration needs to be addressed. To date, we offer the following cookbooks for the platforms and integration patterns:
 
 | Platform | Tooling | Integration pattern | Cookbook |
 |---|---|---|---|
-| Microsoft | **Microsoft Copilot Studio** | Per-user token exchange via a Power Platform custom connector (Entra or direct IAS OAuth) | [→](./microsoft-azure-integration/) |
-| GCP | **Google Gemini Enterprise** | Three-legged OAuth with a proxy agent on Google Agent Runtime | [→](./gcp-integration/) |
-| AWS | **Amazon Web Services (AWS AgentCore)** | On-behalf-of token exchange via AWS AgentCore Identity | [→](./aws-integration/) |
+| Microsoft | **Microsoft Copilot Studio** | Per-user token exchange via a Power Platform custom connector (Entra or direct IAS OAuth) | [→](./03-microsoft-azure-integration/) |
+| GCP | **Google Gemini Enterprise** | Three-legged OAuth with a proxy agent on Google Agent Runtime | [→](./02-gcp-integration/) |
+| AWS | **Amazon Web Services (AWS AgentCore)** | On-behalf-of token exchange via AWS AgentCore Identity | [→](./01-aws-integration/) |
 
 ## Requirements
 
