@@ -48,7 +48,7 @@ When a 3rd-party agent calls SAP agents on behalf of a user, there are two IAM i
 
 ## Which approach?
 
-Reminder: make sure to have completed the SAP-side **→ [Common setup](../common-setup/README.md)**
+Reminder: make sure to have completed the SAP-side **→ [Common setup](../00-common-setup/README.md)**
 
 For calling an agent **behind the Agent Gateway** from Copilot Studio, this cookbook gives three variants:
 
