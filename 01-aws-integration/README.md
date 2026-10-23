@@ -20,7 +20,7 @@ client secret or signs an assertion itself.
 > but the flow is identical.
 
 - **Setup & configuration** (KMS, SAP CIS, Cognito, credential provider, deploy,
-  Quick connector): see [ROADMAP.md](ROADMAP.md).
+  Quick connector): see [ROADMAP.md](code/ROADMAP.md).
 
 ![architecture](./images/architecture.png)
 
@@ -98,7 +98,7 @@ runtime reads them from a DynamoDB row (`AGENT_CONFIG_KEY`) on every request
 (cached for `CONFIG_CACHE_TTL_SECONDS`). The runtime **only reads** this row —
 it is written out-of-band by an operator (an admin surface outside this agent),
 never by the runtime itself. Validated by `RuntimeConfig` in
-[`runtime/config.py`](runtime/config.py). The row holds:
+[`runtime/config.py`](code/runtime/config.py). The row holds:
 
 | Field | Meaning |
 |---|---|
@@ -153,7 +153,7 @@ aws-sap-interop-cookbook/
 - **AWS CLI** configured for the target account / region.
 - **Python 3.13** (the AgentCore direct-code runtime; no Docker required).
 - **Amazon Bedrock model access** enabled for the configured `model_id`.
-- The supporting infrastructure set up per [ROADMAP.md](ROADMAP.md) (KMS key, SAP
+- The supporting infrastructure set up per [ROADMAP.md](code/ROADMAP.md) (KMS key, SAP
   CIS credential provider, DynamoDB config table, Cognito pool) — follow
   it first if you are starting from scratch.
 
@@ -189,7 +189,7 @@ through a real Cognito login, confirming the full chain works.
 
 ## Development
 
-- **Agent logic:** edit [`runtime/agent.py`](runtime/agent.py) (the Bedrock tool
+- **Agent logic:** edit [`runtime/agent.py`](code/runtime/agent.py) (the Bedrock tool
   loop and routing). Redeploy with `./build_mcp.sh && ./deploy.sh`.
 - **Model / SAP agent list / CIS settings:** edit the **DynamoDB config row**
   out-of-band (operator/admin surface) — no redeploy needed; the runtime picks it
@@ -204,7 +204,7 @@ through a real Cognito login, confirming the full chain works.
 ./deploy.sh           # create/update the runtime, poll until READY
 ```
 
-Then wire it to Amazon Quick (one-time, see [ROADMAP.md](ROADMAP.md)):
+Then wire it to Amazon Quick (one-time, see [ROADMAP.md](code/ROADMAP.md)):
 
 Register an **Amazon Quick MCP connector** at the runtime's direct `/invocations`
 URL (`https://bedrock-agentcore.<region>.amazonaws.com/runtimes/<url-encoded-runtime-arn>/invocations?qualifier=DEFAULT`),
