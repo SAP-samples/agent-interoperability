@@ -6,6 +6,8 @@
 
 ## Architecture
 
+The following diagram depict architecture components relevant for the agent integration between Microsoft and SAP Business AI Platform.
+
 **Diagram:** [`./images/architecture.drawio`](./images/architecture.drawio)
 
 ![`./images/architecture.png`](./images/architecture.png)
@@ -45,6 +47,8 @@ When a 3rd-party agent calls SAP agents on behalf of a user, there are two IAM i
 ---
 
 ## Which approach?
+
+Reminder: make sure to have completed the SAP-side **→ [Common setup](./common-setup/)**
 
 For calling an agent **behind the Agent Gateway** from Copilot Studio, this cookbook gives three variants:
 
