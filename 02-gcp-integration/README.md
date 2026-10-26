@@ -16,7 +16,7 @@ The result is GCP-Agent-Generic, a transparent proxy agent that sits between Gem
 
 Before you begin, assign the Agent Gateway consumer system to formations. Follow the guidance in the following SAP Help Portal document:
 
-https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/85abb1b3c5734138826f02d079b04975/a0465991ba964736a781c275ddd852db.html?state=DRAFT&ai=true#loioc1e0e4ef9ce145eea314bbb9e9f61514
+https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/a0465991ba964736a781c275ddd852db.html?&ai=true
 
 - SAP Business AI Components
   - SAP for Me

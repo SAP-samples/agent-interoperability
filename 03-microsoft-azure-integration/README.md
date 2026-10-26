@@ -360,7 +360,7 @@ In Approach B the connection delivers an IAS user token directly, so a single `j
 - RA0029 - "A2A and MCP for Interoperability": <https://github.com/SAP/architecture-center/blob/dev/docs/ref-arch/RA0029/1-a2a-and-mcp/drawio/architecture.drawio>
 - Copilot Studio × MCP Gateway (d2e34e): <https://architecture.learning.sap.com/docs/ref-arch/d2e34e>
 - Pro-code A2A example (community): <https://github.com/hobru/sap-a2a-btp-copilot-studio>
-- SAP Help - Invoking an SAP Agent Through IDP Trust and JWKS-Based Integration: <https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/85abb1b3c5734138826f02d079b04975/e9da5158a18649168e040495b26c43bc.html>
+- SAP Help - Invoking an SAP Agent Through IDP Trust and JWKS-Based Integration: <https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/e9da5158a18649168e040495b26c43bc.html>
 - Copilot Studio native A2A auth options: <https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-agent-to-agent>
 - Custom connector custom-code sandbox: <https://learn.microsoft.com/en-us/connectors/custom-connectors/write-code>
 - Custom connector connection auth types: <https://learn.microsoft.com/en-us/connectors/custom-connectors/connection-parameters>
