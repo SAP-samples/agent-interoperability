@@ -1,8 +1,9 @@
-# Authenticate Inbound Connections from GCP Agents Using Three-Legged OAuth with Google Auth Manager
+# Google Cloud Platform - SAP Agent Interoperability
 
-This cookbook explains how to integrate agents hosted on the GCP Agent Platform or Gemini Enterprise with an SAP landscape through SAP Agent Gateway.
+This cookbook explains how to integrate agents hosted on the GCP Agent Platform or Gemini Enterprise to an agent on the **SAP Business AI Platform** through **SAP Agent Gateway**. It corresponds to the Reference Architecture [**Gemini Enterprise Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/c9a3f8).
 
-## Overview
+
+## Architecture Overview
 
 Connecting an agent deployed on Google's Agent Platform and integrated with Gemini Enterprise to an agent hosted on SAP Business AI Platform requires an additional component.
 

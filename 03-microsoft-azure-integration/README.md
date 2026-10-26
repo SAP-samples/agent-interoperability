@@ -1,10 +1,8 @@
-# Microsoft Copilot Studio
+# Microsoft - SAP Agent Interoperability
 
-**Goal:** Connect a Microsoft Copilot Studio agent to an SAP agent (behind the SAP Agent Gateway, or a custom A2A agent on BTP), so the Copilot agent can delegate a task and get the SAP agent's answer back - with real per-user identity.
+This cookbook explains how to connect a Microsoft Copilot Studio agent to an agent on the **SAP Business AI Platform** through **SAP Agent Gateway**, so the Copilot agent can delegate a task and get the SAP agent's answer back - with real per-user identity. It corresponds to the Reference Architecture [**Microsoft Copilot Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/a2c0f1).
 
----
-
-## Architecture
+## Architecture Overview
 
 The following diagram depict architecture components relevant for the agent integration between Microsoft and SAP Business AI Platform.
 
