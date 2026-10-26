@@ -10,7 +10,7 @@ To enable the three-legged OAuth flow, deploy a proxy agent to Google's Agent Ru
 
 The result is GCP-Agent-Generic, a transparent proxy agent that sits between Gemini Enterprise and a downstream A2A agent. It runs on Google Agent Runtime (Vertex AI Agent Engine), is deployed with `agents-cli`, and performs one task: it exchanges the end-user token forwarded by Gemini Enterprise at SAP IAS for a downstream-scoped token, then relays the call to the downstream agent over A2A. The resulting architecture is shown below.
 
-![](./images/gcp-arch-draft-1.png)
+![](./images/gcp-arch-draft-2.png)
 
 ## Prerequisites
 
@@ -108,7 +108,13 @@ Complete the fields as follows:
 
 Save the configuration.
 
-TBD: AGENT GATEWAY DEPENDENCY!
+TBD: Check with Kay!
+
+Verify that the SAP Agent Gateway is present under `Applications & Resources` &rarr; `<your-application>` &rarr; `Dependencies`. This dependency should be automatically created while creating the Formations.
+
+![](./images/agw-dependency.png)
+
+The `Dependency Name` is relevant for the `TOKEN_EXCHANGE_RESOURCE` e.g. `urn:sap:identity:application:provider:name:agent-gateway` in the next step!
 
 ### 3. Configure and Deploy GCP-Agent-Generic
 
@@ -148,8 +154,8 @@ uv tool install google-agents-cli
 
 Deploy the agent:
 ```
-uv sync                          # generates uv.lock (Docker build needs it)
-agents-cli deploy                # pass .env to the runtime; do NOT set a client secret
+uv sync                                           # generates uv.lock (Docker build needs it)
+agents-cli deploy --project <your-project-id>     # pass .env to the runtime; do NOT set a client secret
 ```
 
 ### 4. Add Policy Binding to Google Cloud Platform Service Account
@@ -226,3 +232,8 @@ Select `Next` and enter the following values:
 Select `Create`.
 
 ### 6. Validate the Integration
+
+1.  Open [Gemini Enterprise]([https://console.cloud.google.com/gemini-enterprise]) or search via Console Search and select your appllication.
+2.  Click on `Open Preview`
+3.  Tag the attached Agent with `@`
+4.  Send a message e.g. `"What can you do?"`
