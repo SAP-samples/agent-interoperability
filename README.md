@@ -1,4 +1,4 @@
-# Agent Interoperability
+# SAP Agent Interoperability
 
 <!--- Register repository https://api.reuse.software/register, then add REUSE badge:
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP-samples/REPO-NAME)](https://api.reuse.software/info/github.com/SAP-samples/REPO-NAME)
@@ -6,11 +6,11 @@
 
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP-samples/agent-interoperability)](https://api.reuse.software/info/github.com/SAP-samples/agent-interoperability)
 
-Hands-on recipes for connecting AI agents from non-SAP platforms - Amazon Web Services, Google Cloud and Microsoft - to AI agents running on the **SAP Business AI Platform** through the **SAP Agent Gateway**.
+This repo contains a collection of hands-on recipes for connecting AI agents from non-SAP platforms - initially Amazon Web Services, Google Cloud and Microsoft - to AI agents running on the **SAP Business AI Platform** through the **SAP Agent Gateway**.
 
 Enterprises run agents on SAP Business AI Platform alongside agents built on agent platforms from Amazon Web Services, Google Cloud, Microsoft or other. For those agents to collaborate on a business process, they need more than a shared protocol - they need identity federation, trust, governed and a controlled path into the SAP ecosystem.
 
-These cookbooks and recipes are the **how-to** companion to the SAP Architecture Center reference architectures for [agent interoperability](https://architecture.learning.sap.com/docs/ref-arch/76ec36). The Architecture Center explains the **what and why** of each integration pattern; the cookbooks here give you the **concrete, step-by-step setup and implementation guides** - including code samples - to reproduce it.
+These cookbooks and recipes are the **how-to** companion to the SAP Architecture Center reference architectures fo agent interoperability under: [**Integrating Joule Agents into Your Ecosystem**](https://architecture.learning.sap.com/docs/ref-arch/fe0d1d). The Architecture Center explains the **what and why** of each integration pattern; the cookbooks here give you the **concrete, step-by-step setup and implementation guides** - including code samples - to reproduce it.
 
 Definitions:
 - [**Agent-to-Agent (A2A)**](https://a2a-protocol.org/latest/) is the protocol agents use to delegate tasks to one another.
@@ -29,11 +29,11 @@ Before you start: make sure to complet the **→ [Common setup](./00-common-setu
 
 The platforms offer differrent ways to build agents, and they also differenciate in the way how the integration needs to be addressed. To date, we offer the following cookbooks for the platforms and integration patterns:
 
-| Platform | Tooling | Integration pattern | Cookbook |
+| Platform (alphabetical order) | Tooling | Integration pattern | Cookbook |
 |---|---|---|---|
-| Microsoft | **Microsoft Copilot Studio** | Per-user token exchange via a Power Platform custom connector (Entra or direct IAS OAuth) | [→](./03-microsoft-azure-integration/) |
-| GCP | **Google Gemini Enterprise** | Three-legged OAuth with a proxy agent on Google Agent Runtime | [→](./02-gcp-integration/) |
 | AWS | **Amazon Web Services (AWS AgentCore)** | On-behalf-of token exchange via AWS AgentCore Identity | [→](./01-aws-integration/) |
+| GCP | **Google Gemini Enterprise** | Three-legged OAuth with a proxy agent on Google Agent Runtime | [→](./02-gcp-integration/) |
+| Microsoft | **Microsoft Copilot Studio** | Per-user token exchange via a Power Platform custom connector (Entra or direct IAS OAuth) | [→](./03-microsoft-azure-integration/) |
 
 ## Requirements
 
@@ -44,7 +44,7 @@ The platforms offer differrent ways to build agents, and they also differenciate
 
 ## Known Issues
 
-No known issues.
+See the detailed cookbook for known issues.
 
 ## How to obtain support
 
