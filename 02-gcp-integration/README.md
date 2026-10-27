@@ -4,13 +4,13 @@ This cookbook explains how to integrate agents hosted on the GCP Agent Platform 
 
 ## Architecture Overview
 
-Connecting an agent deployed on Google's Agent Platform and integrated with Gemini Enterprise to an agent hosted on SAP Business AI Platform requires an additional component.
+Connecting a GCP-hosted agent — deployed on Google's Agent Platform and surfaced through Gemini Enterprise — to an agent on the SAP Business AI Platform requires bridging two distinct trust domains.
 
-To enable the three-legged OAuth flow, deploy a proxy agent to Google's Agent Runtime. The proxy initiates the authentication flow, allowing Gemini Enterprise to display a sign-in prompt in its chat UI and authenticate the user with SAP IAS.
+Gemini Enterprise supports cross-provider three-legged OAuth (3LO): it can present an in-chat sign-in prompt and authenticate the user against SAP Cloud Identity Services (IAS), producing an end-user token. What neither Gemini Enterprise nor SAP offers out of the box is the subsequent token exchange needed to re-scope that token for the SAP Agent Gateway — the authoritative inbound hub for all external agent traffic on the SAP side. That second hop is why a bridge agent is needed.
 
-The result is GCP-Agent-Bridge, a transparent proxy agent that sits between Gemini Enterprise and a downstream A2A agent. It runs on Google Agent Runtime (Vertex AI Agent Engine), is deployed with `agents-cli`, and performs one task: it exchanges the end-user token forwarded by Gemini Enterprise at SAP IAS for a downstream-scoped token, then relays the call to the downstream agent over A2A. The resulting architecture is shown below.
+**GCP-Agent-Bridge** is a transparent proxy agent that sits between Gemini Enterprise and the downstream A2A agent. It runs on Google Agent Runtime (Vertex AI Agent Engine) and is deployed with `agents-cli`. On each request it takes the end-user token forwarded by Gemini Enterprise, runs a JWT-bearer token exchange against SAP IAS — authenticating itself with a client assertion signed by the `sap-ias-signer` GCP service account via Google's signJwt API — to obtain a token scoped to the downstream resource, then relays the call to the target agent over A2A. The resulting architecture is shown below.
  
-![](./images/architecture.drawio.png)
+![](./images/architecture.svg)
  
 ### SAP side - Business AI Platform (BAIP), SAP-managed
 - **Joule Work** (powered by Joule) - authoring/orchestration: *Joule Studio* (build agents), *Custom Agents* (IBD), *Joule Orchestrator* (routes via Skills and A2A), *MCP Builder, Tools* (Data Products, Knowledge Graph).
