@@ -2,13 +2,9 @@
 
 This cookbook explains how to connect a Microsoft Copilot Studio agent to an agent on the **SAP Business AI Platform** through **SAP Agent Gateway**, so the Copilot agent can delegate a task and get the SAP agent's answer back - with real per-user identity. It corresponds to the Reference Architecture [**Microsoft Copilot Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/a2c0f1).
 
----
-
 ## Architecture Overview
 
 The following diagram depicts the architecture components relevant for agent integration between Microsoft and SAP Business AI Platform.
-
-**Diagram:** [`./images/architecture.drawio`](./images/architecture.drawio)
 
 ![`./images/architecture.png`](./images/architecture.png)
 
