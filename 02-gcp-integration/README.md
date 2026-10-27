@@ -1,9 +1,7 @@
 # Google Cloud Platform - SAP Agent Interoperability
- 
-This cookbook explains how to integrate agents hosted on the GCP Agent Platform or Gemini Enterprise to an agent on the SAP Business AI Platform through SAP Agent Gateway. It corresponds to the Reference Architecture [Gemini Enterprise Integration with Joule Agents](https://architecture.learning.sap.com/docs/ref-arch/c9a3f8).
- 
----
- 
+
+This cookbook explains how to integrate agents hosted on the GCP Agent Platform or Gemini Enterprise to an agent on the **SAP Business AI Platform** through **SAP Agent Gateway**. It corresponds to the Reference Architecture [**Gemini Enterprise Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/c9a3f8).
+
 ## Architecture Overview
 
 Connecting a GCP-hosted agent — deployed on Google's Agent Platform and surfaced through Gemini Enterprise — to an agent on the SAP Business AI Platform requires bridging two distinct trust domains.
@@ -55,8 +53,6 @@ The integration uses a **three-legged OAuth 2.0 / OIDC flow** so that the end-us
  
 Before you begin, assign the Agent Gateway consumer system to formations. Follow the guidance in this [SAP Help Portal document](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/85abb1b3c5734138826f02d079b04975/a0465991ba964736a781c275ddd852db.html?state=DRAFT&ai=true#loioc1e0e4ef9ce145eea314bbb9e9f61514).
 
-
-
 - SAP Business AI Components
   - SAP for Me
   - SAP Cloud Identity Services
@@ -73,7 +69,6 @@ Before you begin, assign the Agent Gateway consumer system to formations. Follow
     - Service Usage Consumer
  
 ---
- 
  
 ## Cookbook for scenario
  
