@@ -1,6 +1,12 @@
-# AWS - SAP agent interop
+# Amazon Web Services - SAP Agent Interoperability
 
-**MCP proxy agent** for Amazon Quick. It forwards every business request to a
+This cookbook describes how Agents on Amazon Quick can involve functionality from 
+agents to an agent on the **SAP Business AI Platform** through **SAP Agent Gateway**. It corresponds to the Reference Architecture [**Amazon Quick Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/b4d7e2).
+
+## Architecture Overview
+
+In this approach, we offer an **MCP proxy agent** for Amazon Quick. 
+It forwards every business request to an
 **SAP agent** over A2A, authenticating with the **signed-in user's identity** —
 propagated from Amazon Quick all the way into SAP with no second login.
 
