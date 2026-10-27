@@ -136,9 +136,14 @@ async def _exchange_token(forwarded_token: str) -> str:
         resp = await client.post(
             f"{OAUTH_TOKEN_HOST}{_TOKEN_PATH}", data=payload, headers=headers
         )
-    resp.raise_for_status()
 
-    body = resp.json()
+    try:
+        body = resp.json()
+    except ValueError:
+        body = {}
+    if resp.is_error:
+        detail = body.get("error_description") or body.get("error") or resp.text
+        raise RuntimeError(f"IAS token endpoint returned {resp.status_code}: {detail}")
     if "error" in body:
         raise RuntimeError(body.get("error_description") or body["error"])
     token = body.get("access_token")
@@ -211,9 +216,20 @@ async def call_downstream_agent(request: str, tool_context: ToolContext) -> str:
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(DOWNSTREAM_AGENT_URL, json=payload, headers=headers)
-        resp.raise_for_status()
     except httpx.HTTPError as e:
         return f"Failed to reach the downstream agent: {e}"
+
+    if resp.is_error:
+        correlation_id = (
+            resp.headers.get("x-correlationid")
+            or resp.headers.get("x-vcap-request-id")
+            or resp.headers.get("x-request-id")
+            or "<none>"
+        )
+        return (
+            f"Downstream agent returned {resp.status_code}: "
+            f"{resp.text or '<empty body>'} (x-correlationid: {correlation_id})"
+        )
 
     body = resp.json()
     if "error" in body:
