@@ -120,7 +120,7 @@ cp env.example .envrc
 > (`CIS_TENANT_URL`, `CIS_DISCOVERY_URL`, `CIS_AUD_CLAIM`, `CIS_CLIENT_ID`) and the
 > output identifiers (runtime ID/ARN) you record as you create resources.
 
-### Task 0 (AWS) — Create the Amazon Cognito user pool
+### Step 0 (AWS) - Create the Amazon Cognito user pool
 
 Cognito authenticates the end user into the Amazon Quick MCP connector and issues the access token that carries the user's `email` forward to SAP CIS.
 
@@ -137,7 +137,7 @@ Cognito authenticates the end user into the Amazon Quick MCP connector and issue
 
 ---
 
-### Task 1 (SAP) — Add Amazon Cognito as a corporate identity provider in SAP CIS
+### Step 1 (SAP) - Add Amazon Cognito as a corporate identity provider in SAP CIS
 
 Register the Cognito user pool from Task 0 as a **corporate identity provider** in SAP Cloud Identity Services (CIS) so CIS trusts the identities Cognito issues to the end user.
 
@@ -148,7 +148,7 @@ Register the Cognito user pool from Task 0 as a **corporate identity provider** 
 
 ---
 
-### Task 2 (AWS) — Create the KMS signing key and publish its JWKS
+### Step 2 (AWS) - Create the KMS signing key and publish its JWKS
 
 The client assertion that authenticates to SAP CIS is signed inside AWS with a
 KMS key; SAP CIS verifies it against the matching **public** key published at a
@@ -165,7 +165,7 @@ JWKS URL.
 
 ---
 
-### Task 3 (SAP) — Onboard the AWS agent as an Agent Gateway Consumer in SAP CIS
+### Step 3 (SAP) - Onboard the AWS agent as an Agent Gateway Consumer in SAP CIS
 
 Register the AWS agent in **SAP for Me** as an **Agent Gateway Consumer** system, assign it to the three formations, and configure IdP trust in **SAP Cloud Identity Services (CIS)**. Full click-by-click steps are in the SAP documentation:
 → [Creating an Agent Gateway Consumer System and assigning it to formations](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/a0465991ba964736a781c275ddd852db.html)
@@ -179,7 +179,7 @@ Register the AWS agent in **SAP for Me** as an **Agent Gateway Consumer** system
 
 ---
 
-### Task 4 (SAP) — Discover the SAP agent behind Agent Gateway
+### Step 4 (SAP) - Discover the SAP agent behind Agent Gateway
 
 Use the Agent Gateway's **Agentic Resource Discovery (ARD)** endpoints to list the available SAP agents and derive the two values this cookbook needs: the agent's A2A endpoint (`gateway_url`) and the Gateway resource URN (`ias.resource_urn`).
 
@@ -213,7 +213,7 @@ Full reference:
 
 ---
 
-### Task 5 (AWS) — Create the AgentCore Identity credential provider
+### Step 5 (AWS) - Create the AgentCore Identity credential provider
 
 Create an OAuth2 credential provider in AgentCore Identity using the JSON below. Record the `name` you choose → `CIS_CREDENTIAL_PROVIDER`.
 
@@ -242,7 +242,7 @@ Key fields: `discoveryUrl` points to the CIS tenant, `clientId` is the CIS app c
 
 ---
 
-### Task 6 (AWS) — Create the DynamoDB config table and seed the row
+### Step 6 (AWS) - Create the DynamoDB config table and seed the row
 
 Create a DynamoDB table with a single string partition key named `config_id`, on-demand billing, and encryption at rest enabled. Then add one item with `config_id = <AGENT_CONFIG_KEY>` and a `payload` attribute containing the runtime config as a JSON string.
 
@@ -250,7 +250,7 @@ See [info/agent-config.md](info/agent-config.md) for the full structure with pla
 
 ---
 
-### Task 7 (AWS) — Build and deploy the runtime
+### Step 7 (AWS) - Build and deploy the runtime
 
 > **Swap in your own agent first.** The `runtime/` in this repo is a complete,
 > working reference agent. Replace it with your own AgentCore agent before building,
@@ -276,7 +276,7 @@ Bedrock, and `kms:Sign` with the signing key. It polls until the runtime is
 
 ---
 
-### Task 8 (AWS) — Register the Amazon Quick MCP connector
+### Step 8 (AWS) - Register the Amazon Quick MCP connector
 
 The connector is the bridge that triggers the Cognito login and carries the
 resulting token to the AgentCore Runtime on every message. Register it in the
