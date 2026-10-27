@@ -6,8 +6,6 @@ This cookbook explains how to connect a Microsoft Copilot Studio agent to an age
 
 The following diagram depicts the architecture components relevant for agent integration between Microsoft and SAP Business AI Platform.
 
-**Diagram:** [`./images/architecture.drawio`](./images/architecture.drawio)
-
 ![`./images/architecture.png`](./images/architecture.png)
 
 ### SAP side
