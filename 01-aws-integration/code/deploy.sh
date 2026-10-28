@@ -99,7 +99,8 @@ ENV="{\"AWS_REGION\":\"${REGION}\",\"RUNTIME_NAME\":\"${RUNTIME_NAME}\",\"CIS_PR
 ARTIFACT="{\"codeConfiguration\":{\"code\":{\"s3\":{\"bucket\":\"$BUCKET\",\"prefix\":\"$S3_KEY\"}},\"runtime\":\"PYTHON_3_13\",\"entryPoint\":[\"mcp_server.py\"]}}"
 
 EXISTING=$(aws bedrock-agentcore-control list-agent-runtimes --region "$REGION" \
-  --query "agentRuntimes[?agentRuntimeName=='$RUNTIME_NAME'].agentRuntimeId | [0]" --output text 2>/dev/null)
+  --query "agentRuntimes[?agentRuntimeName=='$RUNTIME_NAME'].agentRuntimeId | [0]" --output text 2>/dev/null \
+  | grep -v '^None$' | head -n1)
 
 if [ -n "$EXISTING" ] && [ "$EXISTING" != "None" ]; then
   echo "    updating existing runtime $EXISTING"
