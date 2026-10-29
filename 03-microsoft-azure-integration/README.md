@@ -221,6 +221,8 @@ Ask the agent to use the tool.
 
 - RA0029 - "A2A and MCP for Interoperability": <https://github.com/SAP/architecture-center/blob/dev/docs/ref-arch/RA0029/1-a2a-and-mcp/drawio/architecture.drawio>
 - Microsoft Copilot Integration with Joule Agents: <https://architecture.learning.sap.com/docs/ref-arch/a2c0f1>
+- Non-SAP Agent Principal Propagation (front-channel & back-channel IAM patterns): <https://architecture.learning.sap.com/docs/ref-arch/07cfe4>
+- Third-Party A2A Integration & Token Exchange (audience-mismatch problem & token exchange): <https://architecture.learning.sap.com/docs/ref-arch/f4a2c8>
 - Copilot Studio × MCP Gateway (d2e34e): <https://architecture.learning.sap.com/docs/ref-arch/d2e34e>
 - SAP Help - Invoking an SAP Agent Through IDP Trust and JWKS-Based Integration: <https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/e9da5158a18649168e040495b26c43bc.html>
 - Copilot Studio native A2A auth options: <https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-agent-to-agent>
