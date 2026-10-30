@@ -4,19 +4,19 @@ This cookbook explains how to connect a Microsoft Copilot Studio agent to an age
 
 ## Architecture Overview
 
-The following diagram depicts the architecture components relevant for agent integration between Microsoft and SAP Business AI Platform.
+Connecting a **Microsoft Copilot Studio** agent to an agent on the SAP Business AI Platform means bridging two distinct trust domains — Microsoft's (Microsoft Entra ID and the Power Platform) and SAP's (IAS and the Agent Gateway). Copilot Studio delegates a task to the SAP agent over A2A and relays the answer back, carrying the signed-in user's identity end-to-end.
 
-![`./images/architecture.png`](./images/architecture.png)
+The integration is built around a Power Platform custom connector that handles the identity handoff between the two platforms. It authenticates the user against SAP Cloud Identity Services (IAS) and performs a token exchange to obtain a gateway-scoped credential before forwarding each request to the SAP Agent Gateway. The connector is surfaced to the Copilot agent as a Tool, keeping the setup lightweight. The resulting architecture is shown below.
+
+![Architecture overview](./images/architecture.png)
 
 ### SAP side
 
-- **Business Transformation Management** - cross-cutting governance layer: *SAP Signavio* (Agent Mining), *SAP LeanIX* (AI Governance), *SAP Cloud ALM* (AI Observability & Eval).
 - **Joule Work** (powered by Joule) - authoring and orchestration: *Joule Studio* (build agents via *Custom Agents* and *Agent Extensions* / Intent-based Development), *Joule Orchestrator* (Agent Harness - routes via Skills and A2A), *Tools* (Data Products, Grounding, Knowledge Graph, Ontology).
 - **Managed Runtimes** - host Joule Agents, Custom Agents & MCP Servers; connected to Agent Gateway via A2A and MCP.
 - **Agent Gateway** - Discovery & Invocation of Agentic Resources; the entry point for external A2A traffic crossing the network boundary.
-- **Global Account** (Customer-managed) - customer's own Subaccount hosting *Custom Agents* (SAP Cloud SDK for AI & Generative AI Hub) and *SAP Integration Suite* (MCP Gateway, A2A Connectivity).
 - **Autonomous Suite** - SAP LoB agents and apps: Autonomous Finance, Autonomous Spend, Autonomous SCM, Autonomous HCM, Autonomous CX, Industry AI.
-- **SAP Cloud Identity Services** - identity hub; bidirectional **OIDC trust** with Microsoft Entra ID, and authorization for Agent Gateway and SAP Integration Suite.
+- **SAP Cloud Identity Services (IAS)** - identity hub; brokers identity and issues the user-scoped token the Agent Gateway accepts, so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
 
 ### Microsoft side
 
@@ -52,7 +52,11 @@ In Approach B (direct IAS OAuth), the connection delivers an IAS user token dire
 
 ## Prerequisites
 
-**SAP side** - complete the → [Common Setup](../00-common-setup/README.md) before proceeding.
+**SAP side** - complete the one-time SAP onboarding in → [Common Setup](../00-common-setup/README.md) before proceeding: register an Agent Gateway consumer system in SAP for Me, assign it to the three formations (in the mandatory order), and configure authentication in SAP Cloud Identity Services (IAS). You will need:
+- Access to **SAP for Me** with the **cloud administrator** role.
+- Administrator access to the **SAP Cloud Identity Services (IAS)** tenant.
+- A **Joule or Custom agent** deployed and reachable behind the **SAP Agent Gateway**.
+- A business **user provisioned in IAS** and authorized (in the agent's RBAC group) for the target agent.
 
 **Microsoft side:**
 - A **Copilot Studio** environment (Power Platform) where custom connectors are allowed.
@@ -95,7 +99,7 @@ Call an SAP agent behind the Agent Gateway from Copilot Studio. The connector au
 - An **IAS application** (the agent app) with: **client ID + secret**, and **two grant types enabled** - `authorization_code` (connection sign-in) **and** `jwt-bearer` (the exchange). Add `refresh_token` + scope `offline_access` for durable connections.
 - Each user **provisioned in IAS** and in the agent's **RBAC group** (see Step 2).
 
-### Step 1 - Gather the SAP Agent Details
+### Step 1 (SAP) - Gather the SAP Agent Details
 
 | | Format |
 |---|---|
@@ -104,7 +108,7 @@ Call an SAP agent behind the Agent Gateway from Copilot Studio. The connector au
 
 Confirm the raw call first in Bruno/curl (a JSON-RPC `message/send` body returns `result.artifacts[0].parts[0].text`).
 
-### Step 2 - IAS App Configuration and User Authorization
+### Step 2 (SAP) - IAS App Configuration and User Authorization
 
 On the IAS application, enable grant types **`authorization_code`** and **`jwt-bearer`** (+ `refresh_token` if using `offline_access`). Note the **client ID** and create/read a **client secret**.
 
@@ -116,7 +120,7 @@ In **SCI Admin Console → Users & Authorizations → User Management**, **+ Add
 **2b - Grant the agent's RBAC group.** (Otherwise the agent returns `state:"failed"` / **"403 RBAC: access denied"**.)
 Open a working user's **Groups** tab, note the agent group (e.g. `agent - Access`). Open your user → **Groups → Assign** → add that group.
 
-### Step 3 - Create the Custom Connector in Power Apps
+### Step 3 (Microsoft) - Create the Custom Connector in Power Apps
 
 > **Shortcut:** **Create → Import an OpenAPI file** and pick [`./code/agw-connector-ias-oauth.swagger.json`](./code/agw-connector-ias-oauth.swagger.json) - it scaffolds General, the `InvokeA2A` POST action, and the IAS (Generic OAuth 2) security definition. After import, replace host, path IDs and the IAS tenant with your own, then do 3b (secret) and 3d (code).
 
@@ -147,7 +151,7 @@ The script reads the IAS user token the connection delivers, performs the `jwt-b
 
 Then **Create / Update connector**.
 
-### Step 4 - Test the Connector
+### Step 4 (Microsoft) - Test the Connector
 
 **Test** tab → **New connection** → the IAS login popup opens (Generic OAuth 2) → sign in → **Connected**. Raw Body = On, paste the `message/send` body, **Test operation** → expect **200**, `state:"completed"`, result under `result.artifacts[0].parts[0].text`.
 
@@ -158,7 +162,7 @@ Then **Create / Update connector**.
 | `200` but `state:"failed"`, `403 RBAC` | user not in the agent's RBAC group | Step 2b |
 | `-32600 "Caller could not be resolved to a known tenant… target 'CAD…'"` | server-side tenant→deployment mapping missing (post re-deploy) | SAP side restores the mapping; check the CAD id didn't rotate |
 
-### Step 5 - Create the Copilot Agent and Add the Tool
+### Step 5 (Microsoft) - Create the Copilot Agent and Add the Tool
 
 1. **Copilot Studio → Create → New agent** (same environment), name it, Create.
 2. **Tools → + Add a tool → Connector →** your connector → `InvokeA2A` → **Add and configure** → pick the connection from Step 4.
@@ -179,7 +183,7 @@ Then **Create / Update connector**.
    > When you call the tool, answer only with the text in `result.artifacts[0].parts[0].text`. If it fails or returns a connection/auth prompt, say so and do NOT invent an answer.
 7. **Save.**
 
-### Step 6 - Validate / Test
+### Step 6 (Microsoft) - Validate / Test
 
 Ask the agent to use the tool.
 - The **first** call per idle session may show a one-time connection consent - reconnect once and retry.
@@ -219,13 +223,13 @@ Ask the agent to use the tool.
 
 ## References
 
-- RA0029 - "A2A and MCP for Interoperability": <https://github.com/SAP/architecture-center/blob/dev/docs/ref-arch/RA0029/1-a2a-and-mcp/drawio/architecture.drawio>
-- Microsoft Copilot Integration with Joule Agents: <https://architecture.learning.sap.com/docs/ref-arch/a2c0f1>
-- Non-SAP Agent Principal Propagation (front-channel & back-channel IAM patterns): <https://architecture.learning.sap.com/docs/ref-arch/07cfe4>
-- Third-Party A2A Integration & Token Exchange (audience-mismatch problem & token exchange): <https://architecture.learning.sap.com/docs/ref-arch/f4a2c8>
-- Copilot Studio × MCP Gateway (d2e34e): <https://architecture.learning.sap.com/docs/ref-arch/d2e34e>
-- SAP Help - Invoking an SAP Agent Through IDP Trust and JWKS-Based Integration: <https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/e9da5158a18649168e040495b26c43bc.html>
-- Copilot Studio native A2A auth options: <https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-agent-to-agent>
-- Custom connector custom-code sandbox: <https://learn.microsoft.com/en-us/connectors/custom-connectors/write-code>
-- Custom connector connection auth types: <https://learn.microsoft.com/en-us/connectors/custom-connectors/connection-parameters>
-- Entra Workload Identity Federation: <https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation>
+- [RA0029 - "A2A and MCP for Interoperability"](https://github.com/SAP/architecture-center/blob/dev/docs/ref-arch/RA0029/1-a2a-and-mcp/drawio/architecture.drawio)
+- [Microsoft Copilot Integration with Joule Agents](https://architecture.learning.sap.com/docs/ref-arch/a2c0f1)
+- [Non-SAP Agent Principal Propagation (front-channel & back-channel IAM patterns)](https://architecture.learning.sap.com/docs/ref-arch/07cfe4)
+- [Third-Party A2A Integration & Token Exchange (audience-mismatch problem & token exchange)](https://architecture.learning.sap.com/docs/ref-arch/f4a2c8)
+- [Copilot Studio × MCP Gateway (d2e34e)](https://architecture.learning.sap.com/docs/ref-arch/d2e34e)
+- [SAP Help - Invoking an SAP Agent Through IDP Trust and JWKS-Based Integration](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/e9da5158a18649168e040495b26c43bc.html)
+- [Copilot Studio native A2A auth options](https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-agent-to-agent)
+- [Custom connector custom-code sandbox](https://learn.microsoft.com/en-us/connectors/custom-connectors/write-code)
+- [Custom connector connection auth types](https://learn.microsoft.com/en-us/connectors/custom-connectors/connection-parameters)
+- [Entra Workload Identity Federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation)
