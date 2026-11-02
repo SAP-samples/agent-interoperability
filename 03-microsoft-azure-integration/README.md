@@ -8,7 +8,7 @@ Connecting a **Microsoft Copilot Studio** agent to an agent on the SAP Business 
 
 The integration is built around a Power Platform custom connector that handles the identity handoff between the two platforms. It authenticates the user against SAP Cloud Identity Services (IAS) and performs a token exchange to obtain a gateway-scoped credential before forwarding each request to the SAP Agent Gateway. The connector is surfaced to the Copilot agent as a Tool, keeping the setup lightweight. The resulting architecture is shown below.
 
-![Architecture overview](./images/architecture.png)
+![Architecture overview](./images/architecture.svg)
 
 ### SAP side
 
@@ -200,6 +200,7 @@ Ask the agent to use the tool.
 ├── images/
 │   ├── architecture.drawio
 │   ├── architecture.png
+│   ├── architecture.svg
 │   ├── back-channel.png
 │   ├── end-to-end-architecture.png
 │   └── front-channel.png
