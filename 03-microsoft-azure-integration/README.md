@@ -74,11 +74,11 @@ Three integration variants are available for calling an agent behind the SAP Age
 |---|---|---|---|---|---|
 | **Approach A** | Back-Channel | Custom connector, **Entra** two-step exchange (user token → Entra app token → gateway token) | Per-user | Requires an Entra app registration | Tool |
 | **Approach B** | Front-Channel | Custom connector, **direct IAS OAuth**, single exchange | Per-user | Simplest - no Entra app needed | Tool |
-| **Approach C** | Front-Channel | Native **Connect Agent2Agent** for a BTP A2A agent that accepts a plain IAS Bearer token | Per-user | No gateway exchange needed | Add agent |
+| **Approach C** | Front-Channel | Native **Connect Agent2Agent** for a BAIP A2A agent that accepts a plain IAS Bearer token | Per-user | No gateway exchange needed | Add agent |
 
 **Approach B is the recommended default** for the Agent Gateway. It requires the fewest moving parts - one IAS application, one client secret, real per-user principal propagation. Use it whenever users can authenticate at IAS directly (natively or federated into IAS).
 
-Approach C applies only when the endpoint accepts a plain Bearer token directly (your own BTP agent, or a middleware proxy that performs the exchange - see [Known Limitations](#known-limitations)).
+Approach C applies only when the endpoint accepts a plain Bearer token directly (your own BAIP agent, or a middleware proxy that performs the exchange - see [Known Limitations](#known-limitations)).
 
 > For structured data / tool access (rather than full task delegation), the alternative is the MCP Gateway in Integration Suite - out of scope here (see *References*, d2e34e).
 

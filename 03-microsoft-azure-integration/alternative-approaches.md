@@ -129,13 +129,13 @@ Ask the agent to use the tool.
 
 ---
 
-## Approach C - Native Connect Agent2Agent for a BTP A2A Agent (OAuth 2.0)
+## Approach C - Native Connect Agent2Agent for a BAIP A2A Agent (OAuth 2.0)
 
-Connect your own A2A agent on SAP BTP to a Copilot Studio agent, per-user via the IAS OAuth 2.0 Authorization Code flow. This works because the BTP agent validates a **plain IAS Bearer token** directly - no gateway exchange needed.
+Connect your own A2A agent on SAP BAIP to a Copilot Studio agent, per-user via the IAS OAuth 2.0 Authorization Code flow. This works because the BAIP agent validates a **plain IAS Bearer token** directly - no gateway exchange needed.
 
 ### Prerequisites
 
-- A working A2A agent on SAP BTP Cloud Foundry, on a public route, serving its Agent Card at `https://<your-route>/.well-known/agent-card.json`.
+- A working A2A agent on SAP BAIP Cloud Foundry, on a public route, serving its Agent Card at `https://<your-route>/.well-known/agent-card.json`.
 - A bound IAS service instance the agent uses to validate incoming Bearer tokens; access to its service key (client ID + secret).
 - A Copilot Studio agent in an environment where *Connect Agent2Agent* (preview) is enabled.
 
@@ -189,4 +189,4 @@ When the connection shows **Connected**, add the agent and **Publish** the Copil
 
 Ask Copilot to delegate (e.g. *"Ask \<agent\>: How is the weather in Berlin today?"*) - the connected agent's answer flows back into the conversation.
 
-> **Note:** The first call in a fresh/idle session may return a generic `SystemError` with **no** request reaching BTP - that is Power Platform (APIM) warmup, not an auth error. Just resend; do not recreate the connection. A real auth failure instead shows a `401` at BTP (check `cf logs <your-app>`).
+> **Note:** The first call in a fresh/idle session may return a generic `SystemError` with **no** request reaching BAIP - that is Power Platform (APIM) warmup, not an auth error. Just resend; do not recreate the connection. A real auth failure instead shows a `401` at BAIP (check `cf logs <your-app>`).
