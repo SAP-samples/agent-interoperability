@@ -4,27 +4,27 @@
 
 ---
 
-## Approach A - Agent Gateway (A2A) via Custom Connector, Entra Two-Step Exchange
+## Approach A - SAP Agent Gateway (A2A) via Custom Connector, Entra Two-Step OAuth 2.0 Token Exchange
 
-Call an SAP agent **behind the Agent Gateway** from Copilot Studio using a **Power Apps custom connector** that performs a two-step token exchange in connector C# code before forwarding the A2A `message/send`.
+Call an SAP agent **behind the SAP Agent Gateway** from Copilot Studio using a **Power Apps custom connector** that performs a two-step OAuth 2.0 Token Exchange in connector C# code before forwarding the A2A `message/send`.
 
-The Gateway only accepts a token minted via a **`jwt-bearer` token exchange** against SCI:
+The SAP Agent Gateway only accepts a token minted via a **OAuth 2.0 Token Exchange** (`jwt-bearer` grant type) against SCI:
 
-- `assertion` = the end user's Entra token
-- `client_assertion` = an Entra app token
+- `assertion` = the end user's Entra Access Token
+- `client_assertion` = an Entra app Access Token
 - `resource = urn:sap:identity:application:provider:name:agent-gateway`
 
-Copilot Studio's native A2A auth can only send one plain Bearer token (see [Known Limitations](./README.md#known-limitations--roadmap)), so the custom connector performs the exchange in **connector C# code** before forwarding.
+Copilot Studio's native A2A auth can only send one plain Bearer token (see [Known Limitations](./README.md#known-limitations--roadmap)), so the custom connector performs the OAuth 2.0 Token Exchange in **connector C# code** before forwarding.
 
-Result: real **principal propagation** - the gateway token carries the actual user (`sub`), `ias_apis: ["external"]`.
+Result: real **[principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation)** - the SAP Agent Gateway Access Token carries the actual user (`sub`), `ias_apis: ["external"]`.
 
 > **Custom connector = a Tool, never "Add agent".** Approach A builds a Power Apps **custom connector** and attaches it via **Tools → + Add a tool → Connector**. A custom connector **never** appears in the **Add agent / Connect Agent2Agent** dialog - that dialog lists only native A2A agents (with an agent card) and has **no code step**. The exchange lives in the connector's C# (Code tab), which exists only on the custom-connector/Tool path. The native "Add agent" route is **Approach C** below.
 
-![Back-channel token exchange](./images/back-channel.png)
+![Back-channel OAuth 2.0 Token Exchange](./images/back-channel.png)
 
 ### Prerequisites
 
-- **Agent Gateway access** + the target agent's identifiers: base URL, agent ORD id, system/CAD artifact id.
+- **SAP Agent Gateway access** + the target agent's identifiers: base URL, agent ORD id, system/CAD artifact id.
 - **SCI admin** on the third-party-agent application, plus a one-time **trust setup** (Step 2 preconditions).
 - An **Entra app registration** for the connector client, with a client secret and an *Expose an API* scope (`access_as_user`).
 - A **Copilot Studio** environment where custom connectors are allowed, and a user who can sign in to that Entra tenant.
@@ -40,12 +40,12 @@ Confirm the raw call first in Bruno/curl (a JSON-RPC `message/send` body returns
 
 ### Step 2 - SCI Setup: Trust and User Authorization
 
-> **One-time precondition:** Entra is trusted as a **corporate IdP** in SCI, and the Entra app token is accepted as a **client assertion** via **Applications → \<agent app\> → Client Authentication → Configure Trust by Issuer** (Issuer = Entra STS `https://sts.windows.net/<tenant>/`, JWKS = `https://login.windows.net/common/discovery/keys`, Subject = Entra app `oid`, Audience = `api://<entra-app-id>`).
+> **One-time precondition:** Entra is trusted as a **Corporate Identity Provider** in SCI, and the Entra app Access Token is accepted as a **client assertion** via **Applications → \<agent app\> → Client Authentication → Configure Trust by Issuer** (Issuer = Entra STS `https://sts.windows.net/<tenant>/`, JWKS = `https://login.windows.net/common/discovery/keys`, Subject = Entra app `oid`, Audience = `api://<entra-app-id>`).
 
-The gateway authorizes the **real user** at two layers - a new user is rejected until **both** grants exist. In **SCI Admin Console → Users & Authorizations → User Management**:
+The SAP Agent Gateway authorizes the **real user** at two layers - a new user is rejected until **both** grants exist. In **SCI Admin Console → Users & Authorizations → User Management**:
 
-**2a - Provision the user in IAS.** (Missing user → `invalid_grant: "User is not authorized for access"` at the exchange.)
-- **+ Add** → name, **Email = the user's Entra email**, **Account Activation = "Set status active"** (no password/mail - login is federated). The incoming Entra token is matched to this IAS user by email.
+**2a - Provision the user in SCI.** (Missing user → `invalid_grant: "User is not authorized for access"` at the OAuth 2.0 Token Exchange.)
+- **+ Add** → name, **Email = the user's Entra email**, **Account Activation = "Set status active"** (no password/mail - login is federated). The incoming Entra Access Token is matched to this SCI user by email.
 
 **2b - Grant the agent's RBAC group.** (Otherwise the agent returns `state:"failed"` / **"403 RBAC: access denied"**.)
 - Open a **working** user's **Groups** tab, note the agent group (e.g. `agent - Access`). Open **your** user → **Groups → Assign** → add that group.
@@ -67,9 +67,9 @@ The gateway authorizes the **real user** at two layers - a new user is rejected 
 | Client secret | your client secret |
 | Authorization URL | `https://login.microsoftonline.com` |
 | Tenant ID | your Entra tenant |
-| Resource URL | `api://<your-ias-tenant>.accounts400.cloud.sap` |
+| Resource URL | `api://<your-sci-tenant>.accounts400.cloud.sap` |
 | Enable on-behalf-of login | `true` |
-| Scope | `api://<your-ias-tenant>.accounts400.cloud.sap/access_as_user` |
+| Scope | `api://<your-sci-tenant>.accounts400.cloud.sap/access_as_user` |
 
 After saving, copy the generated **Redirect URL** (`https://global.consent.azure-apim.net/redirect/…`) into the Entra app's **Redirect URIs**.
 
@@ -82,7 +82,7 @@ Then **Add default response** (`{}` is fine). Do **not** add an `Authorization` 
 
 **3d - Code:** toggle **Code Enabled**, select operation `InvokeA2A`, paste [`./code/agw-connector-entra.csx`](./code/agw-connector-entra.csx). In a **local-only copy** fill the placeholders (`ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_TENANT_ID`, `ENTRA_SCOPE`, `SCI_TOKEN_URL`, `SCI_CLIENT_ID`); keep `SCI_RESOURCE_URN`. **Never commit real values.**
 
-The script: (1) reads the incoming Entra user token; (2) `client_credentials` → Entra app token; (3) SCI `jwt-bearer` exchange (`assertion` = user token, `client_assertion` = app token, `resource` = agent-gateway URN) → gateway token; sets `Authorization: Bearer`, strips the Power-Platform `accept-language` header, forwards.
+The script: (1) reads the incoming Entra Access Token; (2) `client_credentials` → Entra app Access Token; (3) SCI OAuth 2.0 Token Exchange (`assertion` = user Access Token, `client_assertion` = app Access Token, `resource` = agent-gateway URN) → SAP Agent Gateway Access Token; sets `Authorization: Bearer`, strips the Power-Platform `accept-language` header, forwards.
 
 Then **Create / Update connector**.
 
@@ -92,7 +92,7 @@ Then **Create / Update connector**.
 
 | If you see… | Cause | Fix |
 |---|---|---|
-| `502 … invalid_grant "User is not authorized for access"` | user not provisioned in IAS | Step 2a |
+| `502 … invalid_grant "User is not authorized for access"` | user not provisioned in SCI | Step 2a |
 | `200` but `state:"failed"`, `"403 RBAC: access denied"` | user not in the agent's RBAC group | Step 2b |
 | `400 … "Validation failure for accept-language"` | injected header | script already strips it |
 | `-32600 "Caller could not be resolved to a known tenant, cannot verify mapping to target 'CAD…'"` | server-side: no consumer/tenant→deployment mapping for that CAD (typical after a Joule-Studio re-deploy, which also **rotates the CAD id** in the URL) | SAP side re-establishes the mapping; also confirm the CAD id in your POST URL + swagger is current |
@@ -131,12 +131,12 @@ Ask the agent to use the tool.
 
 ## Approach C - Native Connect Agent2Agent for a BAIP A2A Agent (OAuth 2.0)
 
-Connect your own A2A agent on SAP BAIP to a Copilot Studio agent, per-user via the IAS OAuth 2.0 Authorization Code flow. This works because the BAIP agent validates a **plain IAS Bearer token** directly - no gateway exchange needed.
+Connect your own A2A agent on SAP BAIP to a Copilot Studio agent, per-user via the SCI OAuth 2.0 Authorization Code flow. This works because the BAIP agent validates a **plain SCI Access Token** directly - no SAP Agent Gateway OAuth 2.0 Token Exchange needed.
 
 ### Prerequisites
 
 - A working A2A agent on SAP BAIP Cloud Foundry, on a public route, serving its Agent Card at `https://<your-route>/.well-known/agent-card.json`.
-- A bound IAS service instance the agent uses to validate incoming Bearer tokens; access to its service key (client ID + secret).
+- A bound SCI service instance the agent uses to validate incoming Bearer tokens; access to its service key (client ID + secret).
 - A Copilot Studio agent in an environment where *Connect Agent2Agent* (preview) is enabled.
 
 ### Step 1 - Make the Agent Card Copilot-Compatible
@@ -147,12 +147,12 @@ Connect your own A2A agent on SAP BAIP to a Copilot Studio agent, per-user via t
 - Default **JSONRPC** transport - do not set `preferredTransport`.
 - **CORS** (`Access-Control-Allow-Origin`) on the public well-known paths, wrapping the auth middleware - the Connect dialog fetches the card from a browser context.
 
-### Step 2 - Configure the IAS OAuth Client
+### Step 2 - Configure the SCI OAuth Client
 
-Update the IAS service instance (config only - **never put the client secret in a file**):
+Update the SCI service instance (config only - **never put the client secret in a file**):
 
 ```bash
-cf update-service <your-ias-instance> -c '{
+cf update-service <your-sci-instance> -c '{
   "oauth2-configuration": {
     "grant-types": ["authorization_code", "refresh_token"],
     "redirect-uris": ["<REDIRECT_URI_FROM_STEP_3>"],
@@ -163,7 +163,7 @@ cf update-service <your-ias-instance> -c '{
 
 - Use `authorization_code` + `refresh_token` - **not** `authorization_code_pkce_s256` (PKCE fails here).
 - Allow refresh-token issuance (+ `offline_access` scope in Step 3), or the connection dies once the first access token expires.
-- Read client ID / secret from the service key: `cf create-service-key <your-ias-instance> copilot-key` then `cf service-key <your-ias-instance> copilot-key`.
+- Read client ID / secret from the service key: `cf create-service-key <your-sci-instance> copilot-key` then `cf service-key <your-sci-instance> copilot-key`.
 
 ### Step 3 - Create the Connection in Copilot Studio
 
@@ -171,15 +171,15 @@ cf update-service <your-ias-instance> -c '{
 
 | Field | Value |
 |---|---|
-| Authorization URL | `https://<ias-tenant>.accounts400.ondemand.com/oauth2/authorize` |
-| Token URL | `https://<ias-tenant>.accounts400.ondemand.com/oauth2/token` |
+| Authorization URL | `https://<sci-tenant>.accounts400.ondemand.com/oauth2/authorize` |
+| Token URL | `https://<sci-tenant>.accounts400.ondemand.com/oauth2/token` |
 | Refresh URL | *(same as Token URL)* |
 | Scopes | `openid email offline_access` |
-| Client ID / Secret | from the IAS service key (Step 2) |
+| Client ID / Secret | from the SCI service key (Step 2) |
 
-> **Register the redirect URI first.** Filling the form generates an agent-specific redirect URL (`https://global.consent.azure-apim.net/redirect/<connector>-<hash>`). Copy it into the IAS client's `redirect-uris` (Step 2) **before** completing consent, or the OAuth callback is rejected.
+> **Register the redirect URI first.** Filling the form generates an agent-specific redirect URL (`https://global.consent.azure-apim.net/redirect/<connector>-<hash>`). Copy it into the SCI application's `redirect-uris` (Step 2) **before** completing consent, or the OAuth callback is rejected.
 
-Click **Create** and complete the IAS login / consent in the popup.
+Click **Create** and complete the SCI login / consent in the popup.
 
 ### Step 4 - Add the Connected Agent and Publish
 
