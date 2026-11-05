@@ -73,7 +73,7 @@ The integration uses a **three-legged OAuth 2.0 / OIDC flow** so that the end-us
  
 ## Cookbook
  
-All commands are given for Windows PowerShell.
+**All commands are given for Windows PowerShell. If you are using macOS or Linux, you might need to adjust them accordingly.!**
  
 ### Step 1 (GCP) - Create a Google Cloud Service Account
 
