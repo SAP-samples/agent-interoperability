@@ -35,7 +35,7 @@ The integration is built around a Power Platform custom connector that handles t
 | **Front-Channel** (Authorization Code Grant) | The third-party agent initiates an OAuth Authorization Code flow **directly with SAP Cloud Identity Services** - the user's browser is redirected to SCI/IAS for login | Browser redirected to SAP (cookie-based, potential extra attack vector) |
 | **Back-Channel** (Token Exchange) | The user authenticates against the **third-party IdP** (e.g. Entra ID); the agent exchanges that token server-to-server with SCI - no browser redirect to SAP | No SAP browser flow; exchange happens in connector code |
 
-**Main integration pattern.** Microsoft Copilot uses the **Back-Channel** pattern (Custom Connector via Power Apps). The connector's C# code performs the `jwt-bearer` token exchange against SCI before forwarding the A2A `message/send` to the Agent Gateway. See [`./code/README.md`](./code/README.md) for a detailed explanation with architecture diagrams.
+**Main integration pattern.** Microsoft Copilot's recommended default (Approach B) uses the **Front-Channel** pattern (Custom Connector via Power Apps): the user's browser is redirected to SCI/IAS during connector sign-in, and the connector's C# code then performs a single `jwt-bearer` token exchange against SCI before forwarding the A2A `message/send` to the Agent Gateway. See [`./code/README.md`](./code/README.md) for a detailed explanation with architecture diagrams.
 
 **Token exchange mechanics.** The Agent Gateway only accepts a token minted with `resource=urn:sap:identity:application:provider:name:agent-gateway` - a plain OAuth token doesn't have the `aud` the gateway expects, which is why the exchange is required. Customer/partner apps always receive `ias_apis: ["external"]`; the `sap-internal` surface is UCL-managed and cannot be self-declared.
 
@@ -73,7 +73,7 @@ Three integration variants are available for calling an agent behind the SAP Age
 | | Channel | What it is | Identity | Setup complexity | Wired as |
 |---|---|---|---|---|---|
 | **Approach A** | Back-Channel | Custom connector, **Entra** two-step exchange (user token → Entra app token → gateway token) | Per-user | Requires an Entra app registration | Tool |
-| **Approach B** | Back-Channel | Custom connector, **direct IAS OAuth**, single exchange | Per-user | Simplest - no Entra app needed | Tool |
+| **Approach B** | Front-Channel | Custom connector, **direct IAS OAuth**, single exchange | Per-user | Simplest - no Entra app needed | Tool |
 | **Approach C** | Front-Channel | Native **Connect Agent2Agent** for a BTP A2A agent that accepts a plain IAS Bearer token | Per-user | No gateway exchange needed | Add agent |
 
 **Approach B is the recommended default** for the Agent Gateway. It requires the fewest moving parts - one IAS application, one client secret, real per-user principal propagation. Use it whenever users can authenticate at IAS directly (natively or federated into IAS).

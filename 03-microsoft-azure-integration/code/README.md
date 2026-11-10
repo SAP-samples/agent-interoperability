@@ -37,7 +37,7 @@ The 3rd-party agent initiates an **OAuth Authorization Code Grant directly with 
 - No pre-configured identity federation between the IdPs required (but SSO via federation is possible)
 - Straightforward if the 3rd-party platform natively supports Authorization Code Grant against SCI
 
-**Example:** Google Gemini Enterprise → Front-Channel via Custom Agent Runtime
+**Examples:** Google Gemini Enterprise → Front-Channel via Custom Agent Runtime; **Microsoft Copilot, Approach B** → Front-Channel via Custom Connector (IAS OAuth, single exchange)
 
 ---
 
@@ -54,14 +54,15 @@ The 3rd-party agent authenticates the user against its **own IdP** (e.g. Microso
 4. The agent uses the SCI-issued token to call the AGW
 
 **Characteristics:**
-- Implemented as a **Power Apps Custom Connector** - the token exchange happens in C# connector code
 - No browser redirect to SAP; the SAP auth flow is fully server-side
 - Requires identity federation (trust) configured in advance between the 3rd-party IdP and SCI
 - More resilient: no additional browser-based SAP auth flow, no browser cookies for the SAP leg
 - Requires that the 3rd-party IdP/OAuth Server supports token exchange (RFC 8693)
 
-> **Microsoft Copilot uses the Back-Channel pattern** via a Power Apps Custom Connector.
-> The connector code in this directory implements the server-side `jwt-bearer` token exchange.
+**Example:** **Microsoft Copilot, Approach A** → Back-Channel via Custom Connector (Entra two-step exchange)
+
+> **Microsoft Copilot's recommended default (Approach B) uses the Front-Channel pattern** via a Power Apps Custom Connector.
+> The user's browser is redirected to SCI/IAS during connector sign-in; the connector code then performs the server-side `jwt-bearer` token exchange.
 
 ---
 
@@ -71,7 +72,7 @@ The 3rd-party agent authenticates the user against its **own IdP** (e.g. Microso
 |---|---|---|---|
 | [`agw-connector-entra.csx`](./agw-connector-entra.csx) | [Approach A](../README.md#approach-a---agent-gateway-a2a-via-custom-connector-entra-two-step-exchange) | **Back-Channel** | Connector C# script: Entra user token → Entra app token → SCI `jwt-bearer` exchange → AGW |
 | [`agw-connector-entra.swagger.json`](./agw-connector-entra.swagger.json) | [Approach A](../README.md#approach-a---agent-gateway-a2a-via-custom-connector-entra-two-step-exchange) | Back-Channel | OpenAPI definition - import into Power Apps to scaffold the connector |
-| [`agw-connector-ias-oauth.csx`](./agw-connector-ias-oauth.csx) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | **Back-Channel** | Connector C# script: IAS user token → SCI `jwt-bearer` exchange → AGW (single exchange, no Entra) |
-| [`agw-connector-ias-oauth.swagger.json`](./agw-connector-ias-oauth.swagger.json) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | Back-Channel | OpenAPI definition - import into Power Apps to scaffold the connector |
+| [`agw-connector-ias-oauth.csx`](./agw-connector-ias-oauth.csx) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | **Front-Channel** | Connector C# script: IAS user token → SCI `jwt-bearer` exchange → AGW (single exchange, no Entra) |
+| [`agw-connector-ias-oauth.swagger.json`](./agw-connector-ias-oauth.swagger.json) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | Front-Channel | OpenAPI definition - import into Power Apps to scaffold the connector |
 
-Both Approach A and B follow the **Back-Channel** pattern: the user-facing browser flow is against the 3rd-party IdP only; the SAP token exchange happens server-side in the connector code.
+Approach A follows the **Back-Channel** pattern: the user-facing browser flow is against Entra ID; the SAP token exchange happens server-side in the connector code. Approach B follows the **Front-Channel** pattern: the user's browser is redirected to SCI/IAS during connector sign-in; the jwt-bearer exchange is still server-side, but the user authenticates directly at SAP.

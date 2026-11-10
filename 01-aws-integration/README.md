@@ -10,7 +10,7 @@ The identity handoff is handled by **AWS AgentCore**: the user signs in via Amaz
 
 > **Note:** This walkthrough uses **Amazon Cognito** as the connector's OIDC provider, but any OIDC-compliant provider works — e.g. AWS IAM Identity Center, or a corporate IdP (Entra ID, Okta, Ping) federated into it. Wherever this document says "Cognito", read it as "the configured OIDC provider".
 
-![Architecture overview](./images/architecture.png)
+![Architecture overview](./images/architecture.svg)
 
 ### SAP side
 
@@ -138,13 +138,124 @@ The client assertion that authenticates to IAS is signed inside AWS with a
 KMS key; IAS verifies it against the matching **public** key published at a
 JWKS URL.
 
-1. **Create an asymmetric RSA signing key** (`RSA_2048`, usage `SIGN_VERIFY`,
-   `RS256`). Record its key id → `IAS_KMS_KEY_ID`.
-2. **Export the public key** and publish it as a JWKS document at a public HTTPS
-   URL IAS can reach (e.g. a static file in S3). The JWKS entry must carry
-   `kty: RSA`, `use: sig`, `alg: RS256`, and a **`kid` equal to the KMS key id**.
+#### 1. Create the KMS signing key
 
-> Key rotation = publish a new JWKS entry with a new `kid` and point the
+```bash
+aws kms create-key \
+  --key-usage SIGN_VERIFY \
+  --key-spec RSA_2048 \
+  --description "IAS client assertion signing key" \
+  --region $AWS_REGION
+```
+
+Record the `KeyId` from the output:
+```bash
+export IAS_KMS_KEY_ID="1234abcd-12ab-34cd-56ef-1234567890ab"
+```
+
+#### 2. Export the public key
+
+```bash
+aws kms get-public-key \
+  --key-id $IAS_KMS_KEY_ID \
+  --region $AWS_REGION \
+  --output text \
+  --query PublicKey \
+  | base64 --decode > public-key.der
+```
+
+#### 3. Convert public key to JWKS format
+
+You need to convert the DER-formatted public key to JWKS. This requires extracting the RSA modulus (`n`) and exponent (`e`) and encoding them as base64url.
+
+**Using OpenSSL and Python:**
+
+```bash
+# Convert DER to PEM
+openssl rsa -pubin -inform DER -in public-key.der -outform PEM -out public-key.pem
+
+# Extract modulus and exponent using Python
+python3 << 'EOF'
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
+import base64
+import json
+import sys
+
+# Read PEM file
+with open('public-key.pem', 'rb') as f:
+    public_key = serialization.load_pem_public_key(f.read(), backend=default_backend())
+
+# Get public numbers
+public_numbers = public_key.public_numbers()
+
+# Convert to base64url (no padding)
+def int_to_base64url(value):
+    value_bytes = value.to_bytes((value.bit_length() + 7) // 8, byteorder='big')
+    return base64.urlsafe_b64encode(value_bytes).rstrip(b'=').decode('ascii')
+
+# Build JWKS
+jwks = {
+    "keys": [{
+        "kty": "RSA",
+        "use": "sig",
+        "alg": "RS256",
+        "kid": sys.argv[1],  # KMS Key ID
+        "n": int_to_base64url(public_numbers.n),
+        "e": int_to_base64url(public_numbers.e)
+    }]
+}
+
+# Write to file
+with open('jwks.json', 'w') as f:
+    json.dump(jwks, f, indent=2)
+
+print("JWKS created successfully")
+EOF $IAS_KMS_KEY_ID
+```
+
+**Expected JWKS output:**
+```json
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS256",
+      "kid": "1234abcd-12ab-34cd-56ef-1234567890ab",
+      "n": "xGOr-H7A4uP...",
+      "e": "AQAB"
+    }
+  ]
+}
+```
+
+#### 4. Upload JWKS to S3
+
+```bash
+# Create S3 bucket (if doesn't exist)
+aws s3 mb s3://my-ias-jwks-bucket --region $AWS_REGION
+
+# Upload with public-read ACL
+aws s3 cp jwks.json s3://my-ias-jwks-bucket/jwks.json --acl public-read
+
+# Get the public URL
+export JWKS_URL="https://my-ias-jwks-bucket.s3.$AWS_REGION.amazonaws.com/jwks.json"
+```
+
+#### 5. Verify JWKS is accessible
+
+```bash
+curl $JWKS_URL | jq '.'
+```
+
+**Record in `.envrc`:**
+```bash
+export IAS_KMS_KEY_ID="<key-id>"
+export JWKS_URL="<s3-url>"
+```
+
+> **Key rotation:** Publish a new JWKS entry with a new `kid` and point the
 > credential provider at the new KMS key. There is no shared secret to rotate.
 
 ---
@@ -199,7 +310,11 @@ Full reference:
 
 ### Step 6 (AWS) - Create the AgentCore Identity credential provider
 
-Create an OAuth2 credential provider in AgentCore Identity using the JSON below. Record the `name` you choose → `IAS_CREDENTIAL_PROVIDER`.
+Create an OAuth2 credential provider in AgentCore Identity that performs the on-behalf-of token exchange with SAP IAS. Record the `name` you choose → `IAS_CREDENTIAL_PROVIDER`.
+
+#### 1. Prepare the credential provider configuration
+
+Create a JSON file with the credential provider configuration:
 
 ```json
 {
@@ -207,30 +322,162 @@ Create an OAuth2 credential provider in AgentCore Identity using the JSON below.
   "credentialProviderVendor": "CustomOauth2",
   "oauth2ProviderConfigInput": {
     "customOauth2ProviderConfig": {
-      "oauthDiscovery": { "discoveryUrl": "https://<tenant>.accounts.ondemand.com/.well-known/openid-configuration" },
-      "clientId": "<IAS client id from Step 4>",
+      "oauthDiscovery": {
+        "discoveryUrl": "https://<IAS_TENANT>.accounts.ondemand.com/.well-known/openid-configuration"
+      },
+      "clientId": "<IAS_CLIENT_ID>",
       "clientAuthenticationMethod": "PRIVATE_KEY_JWT",
-      "onBehalfOfTokenExchangeConfig": { "grantType": "JWT_AUTHORIZATION_GRANT" },
+      "onBehalfOfTokenExchangeConfig": {
+        "grantType": "JWT_AUTHORIZATION_GRANT"
+      },
       "privateKeyJwtConfig": {
-        "privateKeySource": { "kmsKeySource": { "kmsKeyArn": "arn:aws:kms:<region>:<account>:key/<IAS_KMS_KEY_ID>" } },
+        "privateKeySource": {
+          "kmsKeySource": {
+            "kmsKeyArn": "arn:aws:kms:<AWS_REGION>:<AWS_ACCOUNT>:key/<IAS_KMS_KEY_ID>"
+          }
+        },
         "signingAlgorithm": "RS256",
-        "additionalHeaderClaims": { "kid": "<IAS_KMS_KEY_ID>" },
-        "additionalPayloadClaims": { "aud": "https://<tenant>.accounts.ondemand.com" }
+        "additionalHeaderClaims": {
+          "kid": "<IAS_KMS_KEY_ID>"
+        },
+        "additionalPayloadClaims": {
+          "aud": "https://<IAS_TENANT>.accounts.ondemand.com"
+        }
       }
     }
   }
 }
 ```
 
-Key fields: `discoveryUrl` points to the IAS tenant, `clientId` is the IAS app client from Step 4, and `kmsKeyArn` is the signing key from Step 3. The `kid` in `additionalHeaderClaims` must match `IAS_KMS_KEY_ID` so IAS can look up the right public key in the JWKS.
+**Replace placeholders:**
+- `<IAS_CREDENTIAL_PROVIDER>`: Your chosen provider name (e.g., "my-ias-provider")
+- `<IAS_TENANT>`: Your IAS tenant name
+- `<IAS_CLIENT_ID>`: From Step 4
+- `<AWS_REGION>`: Your AWS region
+- `<AWS_ACCOUNT>`: Your AWS account ID
+- `<IAS_KMS_KEY_ID>`: From Step 3
+
+**Key fields:**
+- `discoveryUrl`: IAS tenant OpenID configuration URL
+- `clientId`: IAS app client from Step 4
+- `kmsKeyArn`: KMS signing key from Step 3
+- `kid` in `additionalHeaderClaims`: Must match `IAS_KMS_KEY_ID` (so IAS can look up the public key in JWKS)
+- `aud` in `additionalPayloadClaims`: IAS tenant URL
+
+Save this as `credential-provider.json`.
+
+#### 2. Create the credential provider
+
+```bash
+aws bedrock-agentcore create-credential-provider \
+  --cli-input-json file://credential-provider.json \
+  --region $AWS_REGION
+```
+
+#### 3. Verify creation
+
+```bash
+aws bedrock-agentcore list-credential-providers \
+  --region $AWS_REGION
+```
+
+**Record in `.envrc`:**
+```bash
+export IAS_CREDENTIAL_PROVIDER="<provider-name>"
+```
 
 ---
 
 ### Step 7 (AWS) - Create the DynamoDB config table and seed the row
 
-Create a DynamoDB table with a single string partition key named `config_id`, on-demand billing, and encryption at rest enabled. Then add one item with `config_id = <AGENT_CONFIG_KEY>` and a `payload` attribute containing the runtime config as a JSON string.
+Create a DynamoDB table for runtime configuration with a single string partition key named `config_id`, on-demand billing, and encryption at rest enabled. Then seed it with initial configuration.
 
-See [code/info/agent-config.md](code/info/agent-config.md) for the full structure with placeholders and a field reference.
+#### 1. Create DynamoDB table
+
+```bash
+aws dynamodb create-table \
+  --table-name aws-agentcore-sap-config \
+  --attribute-definitions AttributeName=config_id,AttributeType=S \
+  --key-schema AttributeName=config_id,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region $AWS_REGION
+
+# Wait for table to become active
+aws dynamodb wait table-exists \
+  --table-name aws-agentcore-sap-config \
+  --region $AWS_REGION
+```
+
+#### 2. Prepare initial configuration
+
+Create `agent-config.json` with your runtime configuration:
+
+```json
+{
+  "version": 1,
+  "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+  "log_level": "INFO",
+  "agents": [
+    {
+      "id": "joule_finance",
+      "name": "Joule Finance Agent",
+      "description": "Handles purchase orders, invoices, and financial queries",
+      "gateway_url": "https://<tenant>.access.sapdas.cloud.sap/v1/a2a/<ord-id>/<agent-tenant-id>/jsonrpc",
+      "aud_urn": null
+    }
+  ],
+  "ias": {
+    "resource_urn": "urn:sap:identity:application:provider:name:agent-gateway",
+    "credential_provider_name": "<IAS_CREDENTIAL_PROVIDER>"
+  },
+  "rate_limit": {
+    "window_seconds": 60,
+    "max_tool_calls": 30
+  }
+}
+```
+
+**Update with your values:**
+- `agents[].id`: Lowercase alphanumeric identifier
+- `agents[].name`: Human-readable agent name
+- `agents[].description`: What the agent handles (shown to the LLM)
+- `agents[].gateway_url`: From Step 5 (ARD discovery)
+- `ias.credential_provider_name`: From Step 6
+
+See [**code/info/agent-config.md**](code/info/agent-config.md) for detailed field descriptions.
+
+#### 3. Put configuration in DynamoDB
+
+```bash
+# Create the item
+aws dynamodb put-item \
+  --table-name aws-agentcore-sap-config \
+  --item "{
+    \"config_id\": {\"S\": \"current\"},
+    \"payload\": {\"S\": $(cat agent-config.json | jq -c '.' | jq -R '.')},
+    \"version\": {\"N\": \"1\"},
+    \"updated_at\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"},
+    \"updated_by\": {\"S\": \"manual-setup\"}
+  }" \
+  --region $AWS_REGION
+```
+
+#### 4. Verify configuration
+
+```bash
+aws dynamodb get-item \
+  --table-name aws-agentcore-sap-config \
+  --key '{"config_id": {"S": "current"}}' \
+  --region $AWS_REGION \
+  | jq -r '.Item.payload.S' \
+  | jq '.'
+```
+
+**Record in `.envrc`:**
+```bash
+export AGENT_CONFIG_TABLE="aws-agentcore-sap-config"
+export AGENT_CONFIG_KEY="current"
+```
 
 ---
 
@@ -321,7 +568,7 @@ can then invoke it directly from the Quick chat interface.
 
 From the Amazon Quick chat interface, ask a question related to the SAP agent. On first run you will be prompted to log in via Cognito.
 
-**Expected:** the connector triggers a Cognito login, forwards the token to the AgentCore Runtime, and returns the SAP agent's answer. CloudWatch logs at `/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT` show the Bedrock tool loop and a successful IAS exchange.
+**Expected:** The connector triggers a Cognito login, forwards the token to the AgentCore Runtime, and returns the SAP agent's answer. CloudWatch logs at `/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT` show the Bedrock tool loop and a successful IAS exchange.
 
 **Terminal validation (alternative to Quick):** If the Cognito app client allows `http://localhost:8765/callback`, the smoke test can be run directly:
 
