@@ -4,9 +4,9 @@ This cookbook explains how to connect a Microsoft Copilot Studio agent to an age
 
 ## Architecture Overview
 
-Connecting a **Microsoft Copilot Studio** agent to an agent on the SAP Business AI Platform means bridging two distinct trust domains — Microsoft's (Microsoft Entra ID and the Power Platform) and SAP's (SAP Cloud Identity Services (CIS) and the agent gateway). Copilot Studio delegates a task to the SAP agent over A2A and relays the answer back, carrying the signed-in user's identity end-to-end.
+Connecting a **Microsoft Copilot Studio** agent to an agent on the SAP Business AI Platform means bridging two distinct trust domains — Microsoft's (Microsoft Entra ID and the Power Platform) and SAP's (SAP Cloud Identity Services and the agent gateway). Copilot Studio delegates a task to the SAP agent over A2A and relays the answer back, carrying the signed-in user's identity end-to-end.
 
-The integration is built around a Power Platform custom connector that handles the identity handoff between the two platforms. It authenticates the user against CIS and performs an OAuth 2.0 Token Exchange to obtain an agent gateway Access Token before forwarding each request to the agent gateway. The connector is surfaced to the Copilot agent as a Tool, keeping the setup lightweight. The resulting architecture is shown below.
+The integration is built around a Power Platform custom connector that handles the identity handoff between the two platforms. It authenticates the user against SAP Cloud Identity Services and performs an OAuth 2.0 Token Exchange to obtain an agent gateway Access Token before forwarding each request to the agent gateway. The connector is surfaced to the Copilot agent as a Tool, keeping the setup lightweight. The resulting architecture is shown below.
 
 ![Architecture overview](./images/architecture.svg)
 
@@ -16,26 +16,26 @@ The integration is built around a Power Platform custom connector that handles t
 - **Managed Runtimes** - host Joule Agents, Custom Agents & MCP Servers; connected to agent gateway via A2A and MCP.
 - **Agent Gateway** - Discovery & Invocation of Agentic Resources; the entry point for external A2A traffic crossing the network boundary.
 - **Autonomous Suite** - SAP LoB agents and apps: Autonomous Finance, Autonomous Spend, Autonomous SCM, Autonomous HCM, Autonomous CX, Industry AI.
-- **CIS** - identity hub; brokers identity and issues the user-scoped Access Token the agent gateway accepts, so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
+- **Cloud Identity Services** - identity hub; brokers identity and issues the user-scoped Access Token the agent gateway accepts, so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
 
 ### Microsoft side
 
 - **Application Clients** (Mobile/Desktop/Web) - the end-user entry point, including Microsoft 365 and Teams.
 - **Microsoft Azure / Microsoft AI** - orchestration layer hosting *Copilot Studio* (the A2A client that delegates tasks to the agent gateway) and the *Power Platform Custom Connector* (performs the OAuth 2.0 Token Exchange before forwarding A2A calls).
-- **Microsoft Entra ID** - Corporate Identity Provider; authenticates users and federates trust with CIS.
+- **Microsoft Entra ID** - Corporate Identity Provider; authenticates users and federates trust with SAP Cloud Identity Services.
 
 ### Identity and Security
 
-**Identity bridge.** CIS and Microsoft Entra ID share a bidirectional **OIDC trust**: Entra authenticates end-users; the trust chain enables **[principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation)** downstream into SAP backends.
+**Identity bridge.** SAP Cloud Identity Services and Microsoft Entra ID share a bidirectional **OIDC trust**: Entra authenticates end-users; the trust chain enables **[principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation)** downstream into SAP backends.
 
 **Auth flow patterns.** When a third-party agent calls SAP agents on behalf of a user, two IAM integration patterns are possible:
 
 | Pattern | How the user's SAP identity is established | Browser involvement |
 |---|---|---|
-| **Front-Channel** (Authorization Code Grant) | The third-party agent initiates an OAuth Authorization Code flow **directly with CIS** - the user's browser is redirected to CIS for login | Browser redirected to SAP (cookie-based, potential extra attack vector) |
-| **Back-Channel** (Token Exchange) | The user authenticates against the **third-party Identity Provider** (e.g. Entra ID); the agent exchanges that token server-to-server with CIS - no browser redirect to SAP | No SAP browser flow; exchange happens in connector code |
+| **Front-Channel** (Authorization Code Grant) | The third-party agent initiates an OAuth Authorization Code flow **directly with SAP Cloud Identity Services** - the user's browser is redirected to SAP Cloud Identity Services for login | Browser redirected to SAP (cookie-based, potential extra attack vector) |
+| **Back-Channel** (Token Exchange) | The user authenticates against the **third-party Identity Provider** (e.g. Entra ID); the agent exchanges that token server-to-server with SAP Cloud Identity Services - no browser redirect to SAP | No SAP browser flow; exchange happens in connector code |
 
-**Main integration pattern.** Microsoft Copilot's recommended default (Approach B) uses the **Front-Channel** pattern (Custom Connector via Power Apps): the user's browser is redirected to CIS during connector sign-in, and the connector's C# code then performs a single OAuth 2.0 Token Exchange against CIS before forwarding the A2A `message/send` to the agent gateway. See [`./code/README.md`](./code/README.md) for a detailed explanation with architecture diagrams.
+**Main integration pattern.** Microsoft Copilot's recommended default (Approach B) uses the **Front-Channel** pattern (Custom Connector via Power Apps): the user's browser is redirected to SAP Cloud Identity Services during connector sign-in, and the connector's C# code then performs a single OAuth 2.0 Token Exchange against SAP Cloud Identity Services before forwarding the A2A `message/send` to the agent gateway. See [`./code/README.md`](./code/README.md) for a detailed explanation with architecture diagrams.
 
 **OAuth 2.0 Token Exchange mechanics.** The agent gateway only accepts a token minted with `resource=urn:sap:identity:application:provider:name:agent-gateway` - a plain OAuth token doesn't have the `aud` the gateway expects, which is why the OAuth 2.0 Token Exchange is required. Customer/partner apps always receive `ias_apis: ["external"]`; the `sap-internal` surface is UCL-managed and cannot be self-declared.
 
@@ -43,24 +43,24 @@ The integration is built around a Power Platform custom connector that handles t
 
 | Token | Is | Does |
 |---|---|---|
-| `assertion` | the end user's **Entra Access Token** | identifies the **user**; CIS keeps `sub` through the exchange → **principal propagation** (the agent and backend see the real user; RBAC is per user) |
+| `assertion` | the end user's **Entra Access Token** | identifies the **user**; SAP Cloud Identity Services keeps `sub` through the exchange → **principal propagation** (the agent and backend see the real user; RBAC is per user) |
 | `client_assertion` | an Entra **app Access Token** | identifies the **calling app**; app tokens can't be *exchanged*, but may be used *as* a client assertion |
 
-In Approach B (direct CIS OAuth), the connection delivers an CIS Access Token directly, so a single OAuth 2.0 Token Exchange suffices - no separate `client_assertion` needed.
+In Approach B (direct SAP Cloud Identity Services OAuth), the connection delivers an SAP Cloud Identity Services Access Token directly, so a single OAuth 2.0 Token Exchange suffices - no separate `client_assertion` needed.
 
 ---
 
 ## Prerequisites
 
-**SAP side** - complete the one-time SAP onboarding in → [Common Setup](../00-common-setup/README.md) before proceeding: register an agent gateway consumer system in SAP for Me, assign it to the three formations (in the mandatory order), and configure authentication in CIS. You will need:
+**SAP side** - complete the one-time SAP onboarding in → [Common Setup](../00-common-setup/README.md) before proceeding: register an agent gateway consumer system in SAP for Me, assign it to the three formations (in the mandatory order), and configure authentication in SAP Cloud Identity Services. You will need:
 - Access to **SAP for Me** with the **cloud administrator** role.
-- Administrator access to the **CIS** tenant.
+- Administrator access to the **SAP Cloud Identity Services** tenant.
 - A **Joule or Custom agent** deployed and reachable behind the **agent gateway**.
-- A business **user provisioned in CIS** and authorized (in the agent's RBAC group) for the target agent.
+- A business **user provisioned in SAP Cloud Identity Services** and authorized (in the agent's RBAC group) for the target agent.
 
 **Microsoft side:**
 - A **Copilot Studio** environment (Power Platform) where custom connectors are allowed.
-- A user account that can sign in to the Entra tenant (and/or CIS, depending on the chosen approach).
+- A user account that can sign in to the Entra tenant (and/or SAP Cloud Identity Services, depending on the chosen approach).
 - Access to **Power Apps** for custom connector creation and management.
 - **agent gateway access** with the target agent's identifiers: base URL, agent ORD id, system/CAD artifact id.
 
@@ -73,10 +73,10 @@ Three integration variants are available for calling an agent behind the agent g
 | | Channel | What it is | Identity | Setup complexity | Wired as |
 |---|---|---|---|---|---|
 | **Approach A** | Back-Channel | Custom connector, **Entra** two-step OAuth 2.0 Token Exchange (user Access Token → Entra app Access Token → agent gateway Access Token) | Per-user | Requires an Entra app registration | Tool |
-| **Approach B** | Front-Channel | Custom connector, **direct CIS OAuth**, single OAuth 2.0 Token Exchange | Per-user | Simplest - no Entra app needed | Tool |
-| **Approach C** | Front-Channel | Native **Connect Agent2Agent** for a BAIP A2A agent that accepts a plain CIS Access Token | Per-user | No agent gateway OAuth 2.0 Token Exchange needed | Add agent |
+| **Approach B** | Front-Channel | Custom connector, **direct SAP Cloud Identity Services OAuth**, single OAuth 2.0 Token Exchange | Per-user | Simplest - no Entra app needed | Tool |
+| **Approach C** | Front-Channel | Native **Connect Agent2Agent** for a BAIP A2A agent that accepts a plain SAP Cloud Identity Services Access Token | Per-user | No agent gateway OAuth 2.0 Token Exchange needed | Add agent |
 
-**Approach B is the recommended default** for the agent gateway. It requires the fewest moving parts - one CIS application, one client secret, real per-user principal propagation. Use it whenever users can authenticate at CIS directly (natively or federated into CIS).
+**Approach B is the recommended default** for the agent gateway. It requires the fewest moving parts - one SAP Cloud Identity Services application, one client secret, real per-user principal propagation. Use it whenever users can authenticate at SAP Cloud Identity Services directly (natively or federated into SAP Cloud Identity Services).
 
 Approach C applies only when the endpoint accepts a plain Access Token directly (your own BAIP agent, or a middleware proxy that performs the exchange - see [Known Limitations](#known-limitations)).
 
@@ -86,18 +86,18 @@ Detailed instructions for **Approach A** (Entra two-step OAuth 2.0 Token Exchang
 
 ---
 
-## Cookbook - Approach B: Agent Gateway via Direct CIS OAuth
+## Cookbook - Approach B: Agent Gateway via Direct SAP Cloud Identity Services OAuth
 
-Call an SAP agent behind the agent gateway from Copilot Studio. The connector authenticates the user **directly against CIS** and performs a **single** OAuth 2.0 Token Exchange (`resource=agent-gateway`, using the `jwt-bearer` grant type) to obtain the agent gateway Access Token.
+Call an SAP agent behind the agent gateway from Copilot Studio. The connector authenticates the user **directly against SAP Cloud Identity Services** and performs a **single** OAuth 2.0 Token Exchange (`resource=agent-gateway`, using the `jwt-bearer` grant type) to obtain the agent gateway Access Token.
 
-**Why Approach B over A:** no Entra app registration, no Entra client-credentials step, no Entra redirect - one CIS client secret, still real per-user principal propagation. The setup is the simplest of the three variants while delivering the same security guarantee.
+**Why Approach B over A:** no Entra app registration, no Entra client-credentials step, no Entra redirect - one SAP Cloud Identity Services client secret, still real per-user principal propagation. The setup is the simplest of the three variants while delivering the same security guarantee.
 
 > This is still a **custom connector = a Tool**. It does **not** go through "Add agent" / Connect Agent2Agent - that dialog is for Approach C. The exchange lives in connector C# code, which exists only on the custom-connector/Tool path.
 
 **Specific prerequisites for this approach:**
 - **agent gateway access** + the agent identifiers (base URL, ORD id, CAD id).
-- An **CIS application** (the agent app) with: **client ID + secret**, and **two grant types enabled** - `authorization_code` (connection sign-in) **and** `jwt-bearer` (OAuth 2.0 Token Exchange grant type). Add `refresh_token` + scope `offline_access` for durable connections.
-- Each user **provisioned in CIS** and in the agent's **RBAC group** (see Step 2).
+- An **SAP Cloud Identity Services application** (the agent app) with: **client ID + secret**, and **two grant types enabled** - `authorization_code` (connection sign-in) **and** `jwt-bearer` (OAuth 2.0 Token Exchange grant type). Add `refresh_token` + scope `offline_access` for durable connections.
+- Each user **provisioned in SAP Cloud Identity Services** and in the agent's **RBAC group** (see Step 2).
 
 ### Step 1 (SAP) - Gather the SAP Agent Details
 
@@ -108,21 +108,21 @@ Call an SAP agent behind the agent gateway from Copilot Studio. The connector au
 
 Confirm the raw call first in Bruno/curl (a JSON-RPC `message/send` body returns `result.artifacts[0].parts[0].text`).
 
-### Step 2 (SAP) - CIS Application Configuration and User Authorization
+### Step 2 (SAP) - SAP Cloud Identity Services Application Configuration and User Authorization
 
-On the CIS application, enable grant types **`authorization_code`** and **`jwt-bearer`** (+ `refresh_token` if using `offline_access`). Note the **client ID** and create/read a **client secret**.
+On the SAP Cloud Identity Services application, enable grant types **`authorization_code`** and **`jwt-bearer`** (+ `refresh_token` if using `offline_access`). Note the **client ID** and create/read a **client secret**.
 
-Provision the user in CIS and grant the agent's RBAC group:
+Provision the user in SAP Cloud Identity Services and grant the agent's RBAC group:
 
-**2a - Provision the user in CIS.** (Missing user → `invalid_grant: "User is not authorized for access"` at the OAuth 2.0 Token Exchange.)
-In **CIS Admin Console → Users & Authorizations → User Management**, **+ Add** → name, **Email = the user's email**, **Account Activation = "Set status active"**.
+**2a - Provision the user in SAP Cloud Identity Services.** (Missing user → `invalid_grant: "User is not authorized for access"` at the OAuth 2.0 Token Exchange.)
+In **SAP Cloud Identity Services Admin Console → Users & Authorizations → User Management**, **+ Add** → name, **Email = the user's email**, **Account Activation = "Set status active"**.
 
 **2b - Grant the agent's RBAC group.** (Otherwise the agent returns `state:"failed"` / **"403 RBAC: access denied"**.)
 Open a working user's **Groups** tab, note the agent group (e.g. `agent - Access`). Open your user → **Groups → Assign** → add that group.
 
 ### Step 3 (Microsoft) - Create the Custom Connector in Power Apps
 
-> **Shortcut:** **Create → Import an OpenAPI file** and pick [`./code/agw-connector-ias-oauth.swagger.json`](./code/agw-connector-ias-oauth.swagger.json) - it scaffolds General, the `InvokeA2A` POST action, and the CIS (Generic OAuth 2) security definition. After import, replace host, path IDs and the CIS tenant with your own, then do 3b (secret) and 3d (code).
+> **Shortcut:** **Create → Import an OpenAPI file** and pick [`./code/agw-connector-ias-oauth.swagger.json`](./code/agw-connector-ias-oauth.swagger.json) - it scaffolds General, the `InvokeA2A` POST action, and the SAP Cloud Identity Services (Generic OAuth 2) security definition. After import, replace host, path IDs and the SAP Cloud Identity Services tenant with your own, then do 3b (secret) and 3d (code).
 
 **3a - General:** Scheme `HTTPS`, Host `<base>`, Base URL `/`.
 
@@ -130,14 +130,14 @@ Open a working user's **Groups** tab, note the agent group (e.g. `agent - Access
 
 | Field | Value |
 |---|---|
-| Client ID | the CIS client ID |
-| Client secret | the CIS client secret |
+| Client ID | the SAP Cloud Identity Services client ID |
+| Client secret | the SAP Cloud Identity Services client secret |
 | Authorization URL | `https://<sci-tenant>.accounts400.ondemand.com/oauth2/authorize` |
 | Token URL | `https://<sci-tenant>.accounts400.ondemand.com/oauth2/token` |
 | Refresh URL | *(same as Token URL)* |
 | Scope | `openid` (use `openid offline_access` for refresh) |
 
-After saving, copy the generated **Redirect URL** into the CIS application's **redirect-uris** **before** the first sign-in.
+After saving, copy the generated **Redirect URL** into the SAP Cloud Identity Services application's **redirect-uris** **before** the first sign-in.
 
 **3c - Definition:** **+ New action** `InvokeA2A`, Verb `POST`, URL = your Agent (POST) URL, Header `Content-Type: application/json`, Body:
 ```json
@@ -147,18 +147,18 @@ No `Authorization` header parameter.
 
 **3d - Code:** toggle **Code Enabled**, operation `InvokeA2A`, paste [`./code/agw-connector-ias-oauth.csx`](./code/agw-connector-ias-oauth.csx). In a **local-only copy** fill `IAS_TOKEN_URL`, `IAS_CLIENT_ID`, `IAS_CLIENT_SECRET`; keep `IAS_RESOURCE_URN`. **Never commit real values.**
 
-The script reads the CIS Access Token the connection delivers, performs the OAuth 2.0 Token Exchange (`resource=agent-gateway`, using the `jwt-bearer` grant type), sets `Authorization: Bearer`, strips `accept-language`, and forwards. It does **not** rewrite the envelope - so pin `jsonrpc` as a Formula in the tool (Step 5).
+The script reads the SAP Cloud Identity Services Access Token the connection delivers, performs the OAuth 2.0 Token Exchange (`resource=agent-gateway`, using the `jwt-bearer` grant type), sets `Authorization: Bearer`, strips `accept-language`, and forwards. It does **not** rewrite the envelope - so pin `jsonrpc` as a Formula in the tool (Step 5).
 
 Then **Create / Update connector**.
 
 ### Step 4 (Microsoft) - Test the Connector
 
-**Test** tab → **New connection** → the CIS login popup opens (Generic OAuth 2) → sign in → **Connected**. Raw Body = On, paste the `message/send` body, **Test operation** → expect **200**, `state:"completed"`, result under `result.artifacts[0].parts[0].text`.
+**Test** tab → **New connection** → the SAP Cloud Identity Services login popup opens (Generic OAuth 2) → sign in → **Connected**. Raw Body = On, paste the `message/send` body, **Test operation** → expect **200**, `state:"completed"`, result under `result.artifacts[0].parts[0].text`.
 
 | If you see… | Cause | Fix |
 |---|---|---|
 | `401 missing_user_token` | connection didn't attach a token | reconnect / confirm the OAuth connection is signed in |
-| `502 ias_exchange_failed … invalid_grant` | user not provisioned / not authorized in CIS | Step 2a |
+| `502 ias_exchange_failed … invalid_grant` | user not provisioned / not authorized in SAP Cloud Identity Services | Step 2a |
 | `200` but `state:"failed"`, `403 RBAC` | user not in the agent's RBAC group | Step 2b |
 | `-32600 "Caller could not be resolved to a known tenant… target 'CAD…'"` | server-side tenant→deployment mapping missing (post re-deploy) | SAP side restores the mapping; check the CAD id didn't rotate |
 
@@ -216,7 +216,7 @@ Ask the agent to use the tool.
 
 ## Known Limitations
 
-**Native A2A reaches the gateway only via a proxy.** Copilot Studio's native *Connect Agent2Agent* auth offers only None / API key / authorization_code OAuth - it can't itself perform the `jwt-bearer` grant type for the OAuth 2.0 Token Exchange, and the agent card's `securitySchemes` don't drive it. So a native A2A connection can't talk to the agent gateway **directly** - that's what Approaches A/B's custom connector is for. It **can**, however, point at the **Agent Gateway Middleware** (`packages/agent-gateway-middleware`): the middleware serves the agent card at `/.well-known/agent-card.json`, accepts the user's plain CIS Access Token or Entra Access Token, and performs the OAuth 2.0 Token Exchange itself before forwarding (`app/middleware/auth.py`: ID-token mode → exchange). Native A2A then stays native (SAP agent as a connected peer, not a Tool), principal propagation preserved.
+**Native A2A reaches the gateway only via a proxy.** Copilot Studio's native *Connect Agent2Agent* auth offers only None / API key / authorization_code OAuth - it can't itself perform the `jwt-bearer` grant type for the OAuth 2.0 Token Exchange, and the agent card's `securitySchemes` don't drive it. So a native A2A connection can't talk to the agent gateway **directly** - that's what Approaches A/B's custom connector is for. It **can**, however, point at the **Agent Gateway Middleware** (`packages/agent-gateway-middleware`): the middleware serves the agent card at `/.well-known/agent-card.json`, accepts the user's plain SAP Cloud Identity Services Access Token or Entra Access Token, and performs the OAuth 2.0 Token Exchange itself before forwarding (`app/middleware/auth.py`: ID-token mode → exchange). Native A2A then stays native (SAP agent as a connected peer, not a Tool), principal propagation preserved.
 
 **The last secret can't leave the connector.** The connector's C# sandbox has no managed identity, no IMDS/egress, no client_credentials grant on the connection, no WIF source. So the client secret in the connector can't be replaced by a managed identity *inside the connector*.
 
