@@ -4,11 +4,11 @@
 
 ---
 
-## Approach A - SAP Agent Gateway (A2A) via Custom Connector, Entra Two-Step OAuth 2.0 Token Exchange
+## Approach A - SAP's Agent Gateway (A2A) via Custom Connector, Entra Two-Step OAuth 2.0 Token Exchange
 
-Call an SAP agent **behind the SAP Agent Gateway** from Copilot Studio using a **Power Apps custom connector** that performs a two-step OAuth 2.0 Token Exchange in connector C# code before forwarding the A2A `message/send`.
+Call an SAP agent **behind the SAP's Agent Gateway** from Copilot Studio using a **Power Apps custom connector** that performs a two-step OAuth 2.0 Token Exchange in connector C# code before forwarding the A2A `message/send`.
 
-The SAP Agent Gateway only accepts a token minted via a **OAuth 2.0 Token Exchange** (`jwt-bearer` grant type) against CIS:
+The SAP's Agent Gateway only accepts a token minted via a **OAuth 2.0 Token Exchange** (`jwt-bearer` grant type) against CIS:
 
 - `assertion` = the end user's Entra Access Token
 - `client_assertion` = an Entra app Access Token
@@ -16,7 +16,7 @@ The SAP Agent Gateway only accepts a token minted via a **OAuth 2.0 Token Exchan
 
 Copilot Studio's native A2A auth can only send one plain Bearer token (see [Known Limitations](./README.md#known-limitations--roadmap)), so the custom connector performs the OAuth 2.0 Token Exchange in **connector C# code** before forwarding.
 
-Result: real **[principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation)** - the SAP Agent Gateway Access Token carries the actual user (`sub`), `ias_apis: ["external"]`.
+Result: real **[principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation)** - the SAP's Agent Gateway Access Token carries the actual user (`sub`), `ias_apis: ["external"]`.
 
 > **Custom connector = a Tool, never "Add agent".** Approach A builds a Power Apps **custom connector** and attaches it via **Tools → + Add a tool → Connector**. A custom connector **never** appears in the **Add agent / Connect Agent2Agent** dialog - that dialog lists only native A2A agents (with an agent card) and has **no code step**. The exchange lives in the connector's C# (Code tab), which exists only on the custom-connector/Tool path. The native "Add agent" route is **Approach C** below.
 
@@ -24,7 +24,7 @@ Result: real **[principal propagation](https://help.sap.com/docs/connectivity/sa
 
 ### Prerequisites
 
-- **SAP Agent Gateway access** + the target agent's identifiers: base URL, agent ORD id, system/CAD artifact id.
+- **SAP's Agent Gateway access** + the target agent's identifiers: base URL, agent ORD id, system/CAD artifact id.
 - **CIS admin** on the third-party-agent application, plus a one-time **trust setup** (Step 2 preconditions).
 - An **Entra app registration** for the connector client, with a client secret and an *Expose an API* scope (`access_as_user`).
 - A **Copilot Studio** environment where custom connectors are allowed, and a user who can sign in to that Entra tenant.
@@ -42,7 +42,7 @@ Confirm the raw call first in Bruno/curl (a JSON-RPC `message/send` body returns
 
 > **One-time precondition:** Entra is trusted as a **Corporate Identity Provider** in CIS, and the Entra app Access Token is accepted as a **client assertion** via **Applications → \<agent app\> → Client Authentication → Configure Trust by Issuer** (Issuer = Entra STS `https://sts.windows.net/<tenant>/`, JWKS = `https://login.windows.net/common/discovery/keys`, Subject = Entra app `oid`, Audience = `api://<entra-app-id>`).
 
-The SAP Agent Gateway authorizes the **real user** at two layers - a new user is rejected until **both** grants exist. In **CIS Admin Console → Users & Authorizations → User Management**:
+The SAP's Agent Gateway authorizes the **real user** at two layers - a new user is rejected until **both** grants exist. In **CIS Admin Console → Users & Authorizations → User Management**:
 
 **2a - Provision the user in CIS.** (Missing user → `invalid_grant: "User is not authorized for access"` at the OAuth 2.0 Token Exchange.)
 - **+ Add** → name, **Email = the user's Entra email**, **Account Activation = "Set status active"** (no password/mail - login is federated). The incoming Entra Access Token is matched to this CIS user by email.
@@ -82,7 +82,7 @@ Then **Add default response** (`{}` is fine). Do **not** add an `Authorization` 
 
 **3d - Code:** toggle **Code Enabled**, select operation `InvokeA2A`, paste [`./code/agw-connector-entra.csx`](./code/agw-connector-entra.csx). In a **local-only copy** fill the placeholders (`ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_TENANT_ID`, `ENTRA_SCOPE`, `SCI_TOKEN_URL`, `SCI_CLIENT_ID`); keep `SCI_RESOURCE_URN`. **Never commit real values.**
 
-The script: (1) reads the incoming Entra Access Token; (2) `client_credentials` → Entra app Access Token; (3) CIS OAuth 2.0 Token Exchange (`assertion` = user Access Token, `client_assertion` = app Access Token, `resource` = agent-gateway URN) → SAP Agent Gateway Access Token; sets `Authorization: Bearer`, strips the Power-Platform `accept-language` header, forwards.
+The script: (1) reads the incoming Entra Access Token; (2) `client_credentials` → Entra app Access Token; (3) CIS OAuth 2.0 Token Exchange (`assertion` = user Access Token, `client_assertion` = app Access Token, `resource` = agent-gateway URN) → SAP's Agent Gateway Access Token; sets `Authorization: Bearer`, strips the Power-Platform `accept-language` header, forwards.
 
 Then **Create / Update connector**.
 
@@ -102,7 +102,7 @@ Then **Create / Update connector**.
 
 1. **Copilot Studio → Create → New agent** (same environment), name it, Create.
 2. **Tools → + Add a tool → Connector →** your connector → `InvokeA2A` → **Add and configure** → pick the connection from Step 4.
-3. **Description:** describe when to call it, e.g. *"Calls the SAP agent via SAP Agent Gateway (A2A). Use whenever the user asks for …"*
+3. **Description:** describe when to call it, e.g. *"Calls the SAP agent via SAP's Agent Gateway (A2A). Use whenever the user asks for …"*
 4. **Inputs:**
 
    | Input | Fill using | Value |
@@ -131,7 +131,7 @@ Ask the agent to use the tool.
 
 ## Approach C - Native Connect Agent2Agent for a BAIP A2A Agent (OAuth 2.0)
 
-Connect your own A2A agent on SAP BAIP to a Copilot Studio agent, per-user via the CIS OAuth 2.0 Authorization Code flow. This works because the BAIP agent validates a **plain CIS Access Token** directly - no SAP Agent Gateway OAuth 2.0 Token Exchange needed.
+Connect your own A2A agent on SAP BAIP to a Copilot Studio agent, per-user via the CIS OAuth 2.0 Authorization Code flow. This works because the BAIP agent validates a **plain CIS Access Token** directly - no SAP's Agent Gateway OAuth 2.0 Token Exchange needed.
 
 ### Prerequisites
 
