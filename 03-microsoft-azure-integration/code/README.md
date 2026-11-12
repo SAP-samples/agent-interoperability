@@ -1,6 +1,6 @@
 # Microsoft Copilot Studio - Connector Code
 
-This directory contains the custom connector code (C# scripts) and OpenAPI definitions for integrating Microsoft Copilot Studio with SAP agents via the SAP's Agent Gateway.
+This directory contains the custom connector code (C# scripts) and OpenAPI definitions for integrating Microsoft Copilot Studio with SAP agents via the agent gateway.
 
 For the full step-by-step setup guide see [`../README.md`](../README.md).
 
@@ -14,7 +14,7 @@ When a 3rd-party agent (e.g. Microsoft Copilot) calls SAP agents on behalf of a 
 
 ![End-to-End Architecture](../images/end-to-end-architecture.png)
 
-The user interacts with the 3rd-party agent; the agent calls the **SAP's Agent Gateway** which enforces access at two points: the 3rd-party agent's right to call SAP agents, and the user's right to access the specific SAP agent. Authentication and authorization are based on OAuth 2.0 / OpenID Connect (OIDC) with [principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation).
+The user interacts with the 3rd-party agent; the agent calls the **agent gateway** which enforces access at two points: the 3rd-party agent's right to call SAP agents, and the user's right to access the specific SAP agent. Authentication and authorization are based on OAuth 2.0 / OpenID Connect (OIDC) with [principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation).
 
 ---
 
@@ -22,13 +22,13 @@ The user interacts with the 3rd-party agent; the agent calls the **SAP's Agent G
 
 ![Front-Channel](../images/front-channel.png)
 
-The 3rd-party agent initiates an **OAuth Authorization Code Grant directly with SAP Cloud Identity Services (CIS)**. The user's browser is redirected to CIS for login and consent, which produces an CIS Access Token for the SAP's Agent Gateway.
+The 3rd-party agent initiates an **OAuth Authorization Code Grant directly with SAP Cloud Identity Services (CIS)**. The user's browser is redirected to CIS for login and consent, which produces an CIS Access Token for the agent gateway.
 
 **Flow:**
 1. User logs in to the 3rd-party agent (e.g. via OAuth/OIDC at the third-party Identity Provider)
 2. The agent initiates an Authorization Code Grant at **SAP Cloud Identity Services** (browser redirect)
-3. CIS issues an Access Token; the agent exchanges it for an SAP's Agent Gateway Access Token via OAuth 2.0 Token Exchange
-4. The SAP's Agent Gateway Access Token is used to call the SAP Agent
+3. CIS issues an Access Token; the agent exchanges it for an agent gateway Access Token via OAuth 2.0 Token Exchange
+4. The agent gateway Access Token is used to call the SAP Agent
 
 **Characteristics:**
 - Connection is configured natively in the 3rd-party platform (e.g. Copilot Studio's connection wizard)
@@ -51,7 +51,7 @@ The 3rd-party agent authenticates the user against its **own Identity Provider**
 1. User logs in to the 3rd-party agent via the third-party Identity Provider (e.g. Entra ID, browser front-channel)
 2. The agent requests a token from its own Identity Provider and performs an OAuth 2.0 Token Exchange server-to-server
 3. The third-party Identity Provider exchanges the token with **CIS** via the configured federation trust
-4. The agent uses the CIS-issued Access Token to call the SAP's Agent Gateway
+4. The agent uses the CIS-issued Access Token to call the agent gateway
 
 **Characteristics:**
 - No browser redirect to SAP; the SAP auth flow is fully server-side
@@ -70,9 +70,9 @@ The 3rd-party agent authenticates the user against its **own Identity Provider**
 
 | File | Approach | Channel | Description |
 |---|---|---|---|
-| [`agw-connector-entra.csx`](./agw-connector-entra.csx) | [Approach A](../README.md#approach-a---agent-gateway-a2a-via-custom-connector-entra-two-step-exchange) | **Back-Channel** | Connector C# script: Entra Access Token → Entra app Access Token → CIS OAuth 2.0 Token Exchange → SAP's Agent Gateway |
+| [`agw-connector-entra.csx`](./agw-connector-entra.csx) | [Approach A](../README.md#approach-a---agent-gateway-a2a-via-custom-connector-entra-two-step-exchange) | **Back-Channel** | Connector C# script: Entra Access Token → Entra app Access Token → CIS OAuth 2.0 Token Exchange → agent gateway |
 | [`agw-connector-entra.swagger.json`](./agw-connector-entra.swagger.json) | [Approach A](../README.md#approach-a---agent-gateway-a2a-via-custom-connector-entra-two-step-exchange) | Back-Channel | OpenAPI definition - import into Power Apps to scaffold the connector |
-| [`agw-connector-ias-oauth.csx`](./agw-connector-ias-oauth.csx) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | **Front-Channel** | Connector C# script: CIS Access Token → CIS OAuth 2.0 Token Exchange → SAP's Agent Gateway (single OAuth 2.0 Token Exchange, no Entra) |
+| [`agw-connector-ias-oauth.csx`](./agw-connector-ias-oauth.csx) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | **Front-Channel** | Connector C# script: CIS Access Token → CIS OAuth 2.0 Token Exchange → agent gateway (single OAuth 2.0 Token Exchange, no Entra) |
 | [`agw-connector-ias-oauth.swagger.json`](./agw-connector-ias-oauth.swagger.json) | [Approach B](../README.md#approach-b---agent-gateway-a2a-via-custom-connector-direct-ias-oauth-single-exchange) | Front-Channel | OpenAPI definition - import into Power Apps to scaffold the connector |
 
 Approach A follows the **Back-Channel** pattern: the user-facing browser flow is against Entra ID; the SAP OAuth 2.0 Token Exchange happens server-side in the connector code. Approach B follows the **Front-Channel** pattern: the user's browser is redirected to CIS during connector sign-in; the OAuth 2.0 Token Exchange is still server-side, but the user authenticates directly at SAP.
