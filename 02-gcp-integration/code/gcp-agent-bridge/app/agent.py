@@ -46,7 +46,7 @@ from app.jwt_bearer import JwtBearerAssertionMinter
 # ── Configuration (fill in via .env / deployment env — see README.md) ────────
 
 # Gemini model the proxy agent runs on.
-MODEL = os.environ.get("MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("MODEL", "gemini-3.8-flash")
 
 # Name the ADK agent reports on its A2A card and as telemetry gen_ai.agent.name.
 # Must be a valid identifier (letters, digits, underscores; not starting with a
@@ -96,15 +96,17 @@ def _get_minter() -> JwtBearerAssertionMinter:
 def _forwarded_token(tool_context: ToolContext) -> str | None:
     """Return the user token Gemini Enterprise forwarded into session state.
 
-    GE keys each forwarded token by its authorization id. We take the one named
-    by GE_AUTH_ID, or — when a single authorization is registered — the only
-    token present.
+    GE keys each forwarded token under a ``temp:`` state key named by its
+    authorization id. We take the one named by GE_AUTH_ID, or — when a single
+    authorization is registered — the only ``temp:`` token present. Other state
+    keys (e.g. the runtime's ``agent_engine:`` bookkeeping) are ignored.
     """
     state = tool_context.session.state or {}
     if GE_AUTH_ID:
         return state.get(GE_AUTH_ID)
-    if len(state) == 1:
-        return next(iter(state.values()))
+    forwarded = {k: v for k, v in state.items() if k.startswith("temp:")}
+    if len(forwarded) == 1:
+        return next(iter(forwarded.values()))
     return None
 
 
@@ -152,22 +154,41 @@ async def _exchange_token(forwarded_token: str) -> str:
     return token
 
 
-def _extract_text(node: Any) -> str:
-    """Collect the text parts from an A2A message/task result."""
-    found: list[str] = []
+def _parts_text(parts: Any) -> str:
+    """Join the text of an A2A ``parts`` list."""
+    if not isinstance(parts, list):
+        return ""
+    return "\n".join(
+        p["text"]
+        for p in parts
+        if isinstance(p, dict) and isinstance(p.get("text"), str)
+    )
 
-    def walk(n: Any) -> None:
-        if isinstance(n, dict):
-            if isinstance(n.get("text"), str):
-                found.append(n["text"])
-            for v in n.values():
-                walk(v)
-        elif isinstance(n, list):
-            for v in n:
-                walk(v)
 
-    walk(node)
-    return "\n".join(found)
+def _extract_text(result: Any) -> str:
+    """Return the downstream's final text only.
+
+    Prefers the completed ``artifacts``, then a bare ``Message`` result, then
+    the terminal ``status`` message. Deliberately ignores ``history`` and
+    intermediate progress updates so the echoed request and status messages
+    (e.g. "Processing...") don't leak into the reply.
+    """
+    if not isinstance(result, dict):
+        return ""
+    artifacts = result.get("artifacts")
+    if isinstance(artifacts, list):
+        text = "\n".join(
+            _parts_text(a.get("parts")) for a in artifacts if isinstance(a, dict)
+        ).strip()
+        if text:
+            return text
+    if result.get("parts") is not None:
+        if text := _parts_text(result.get("parts")).strip():
+            return text
+    status = result.get("status")
+    if isinstance(status, dict) and isinstance(status.get("message"), dict):
+        return _parts_text(status["message"].get("parts")).strip()
+    return ""
 
 
 async def call_downstream_agent(request: str, tool_context: ToolContext) -> str:

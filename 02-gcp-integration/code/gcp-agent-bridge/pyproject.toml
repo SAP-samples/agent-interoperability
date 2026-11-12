@@ -8,15 +8,16 @@ authors = [
 
 
 dependencies = [
-    "google-adk[bigquery-analytics,gcp,otel-gcp]>=2.8.0,<2.9.0",
+    "google-adk[bigquery-analytics,gcp,otel-gcp]>=2.12.0,<3.0.0",
     "google-api-python-client>=2.0.0,<3.0.0",
     "opentelemetry-resourcedetector-gcp<=1.12.0a0",
-    "gcsfs>=2024.11.0",
+    "gcsfs>=2026.10.0",
     "a2a-sdk[http-server]>=1.0,<2",
     "aiohttp>=3.13.4",
     "google-cloud-logging>=3.12.0,<4.0.0",
-    "google-cloud-aiplatform[agent-engines,evaluation]>=1.156.0,<2.0.0",
+    "google-cloud-aiplatform[agent-engines,evaluation]>=2.2.0,<3.0.0",
     "protobuf>=6.31.1,<7.0.0",
+    "google-cloud-agentplatform[agent-engines]>=2.2.0,<3.0.0",
 ]
 requires-python = ">=3.11,<3.14"
 
@@ -30,8 +31,8 @@ dev = [
 
 [project.optional-dependencies]
 eval = [
-    "google-adk[eval]>=2.8.0,<2.9.0",
-    "google-cloud-aiplatform[evaluation]>=1.156.0,<2.0.0"
+    "google-adk[eval]>=2.12.0,<3.0.0",
+    "google-cloud-aiplatform[evaluation]>=2.2.0,<3.0.0"
 ]
 lint = [
     "ruff>=0.4.6,<1.0.0",

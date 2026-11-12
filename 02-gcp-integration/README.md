@@ -73,7 +73,7 @@ The integration uses a **three-legged OAuth 2.0 / OIDC flow** so that the end-us
  
 ## Cookbook
  
-**All commands are given for Windows PowerShell. If you are using macOS or Linux, you might need to adjust them accordingly.!**
+**All commands are given for Windows PowerShell. If you are using macOS or Linux, you might need to adjust them accordingly!**
  
 ### Step 1 (GCP) - Create a Google Cloud Service Account
 
@@ -138,8 +138,8 @@ Complete the fields as follows:
 |-|-|
 | `Description` | Enter a description. |
 | `Issuer Configuration` | Manual Configuration |
-| `Issuer` | `https://www.googleapis.com/service_accounts/v1/jwk/<RUNTIME_SA_URI>` |
-| `JSON Web Key Set URI` | `https://www.googleapis.com/service_accounts/v1/jwk/<RUNTIME_SA_URI>` |
+| `Issuer` | `https://www.googleapis.com/service_accounts/v1/jwk/<RUNTIME_SA_EMAIL>` |
+| `JSON Web Key Set URI` | `https://www.googleapis.com/service_accounts/v1/jwk/<RUNTIME_SA_EMAIL>` |
 | `Refresh Interval` | 24 hours |
 | `Corporate Identity Provider - Name` | **Leave blank!** |
 | `Subject` | Client ID from the credentials created previously. |
@@ -177,7 +177,7 @@ Set the following variables:
 
 Open the GCP-Agent-Bridge
 ```
-cd ./<path-on-your-machine>/GCP-Agent-Bridge/
+cd ./<path-on-your-machine>/gcp-agent-bridge/
 ```
 
 Install `uv`:
@@ -207,7 +207,7 @@ Grant the service account permission to create credentials.
 ```
 gcloud iam service-accounts add-iam-policy-binding `
   sap-ias-signer@<your-project-id>.iam.gserviceaccount.com `
-  --member "<service-account>@gcp-sa-aiplatform-re.iam.gserviceaccount.com" `
+  --member "serviceAccount:<service-account>@gcp-sa-aiplatform-re.iam.gserviceaccount.com" `
   --role roles/iam.serviceAccountTokenCreator `
   --project <your-project-id>
 ```
