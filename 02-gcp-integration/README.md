@@ -1,23 +1,23 @@
 # Google Cloud Platform - SAP Agent Interoperability
 
-This cookbook explains how to integrate agents hosted on the GCP Agent Platform or Gemini Enterprise to an agent on the **SAP Business AI Platform** through **SAP Agent Gateway**. It corresponds to the Reference Architecture [**Gemini Enterprise Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/c9a3f8).
+This cookbook explains how to integrate agents hosted on the GCP Agent Platform or Gemini Enterprise to an agent on the **SAP Business AI Platform** through **SAP's agent gateway**. It corresponds to the Reference Architecture [**Gemini Enterprise Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/c9a3f8).
 
 ## Architecture Overview
 
 Connecting a GCP-hosted agent — deployed on Google's Agent Platform and surfaced through Gemini Enterprise — to an agent on the SAP Business AI Platform requires bridging two distinct trust domains.
 
-Gemini Enterprise supports cross-provider three-legged OAuth (3LO): it can present an in-chat sign-in prompt and authenticate the user against SAP Cloud Identity Services (CIS), producing an end-user identity token. What neither Gemini Enterprise nor SAP offers out of the box is the subsequent OAuth 2.0 Token Exchange needed to re-scope that token for the SAP Agent Gateway — the authoritative inbound hub for all external agent traffic on the SAP side. That second hop is why a bridge agent is needed.
+Gemini Enterprise supports cross-provider three-legged OAuth (3LO): it can present an in-chat sign-in prompt and authenticate the user against SAP Cloud Identity Services, producing an end-user identity token. What neither Gemini Enterprise nor SAP offers out of the box is the subsequent OAuth 2.0 Token Exchange needed to re-scope that token for SAP's agent gateway — the authoritative inbound hub for all external agent traffic on the SAP side. That second hop is why a bridge agent is needed.
 
-**GCP-Agent-Bridge** is a transparent proxy agent that sits between Gemini Enterprise and the downstream A2A agent. It runs on Google Agent Runtime (Vertex AI Agent Engine) and is deployed with `agents-cli`. On each request it takes the end-user identity token forwarded by Gemini Enterprise, runs an OAuth 2.0 Token Exchange against SAP CIS — authenticating itself with a client assertion signed by the `sap-ias-signer` GCP service account via Google's signJwt API — to obtain a access token scoped to the downstream resource, then relays the call to the target agent over A2A. The resulting architecture is shown below.
+**GCP-Agent-Bridge** is a transparent proxy agent that sits between Gemini Enterprise and the downstream A2A agent. It runs on Google Agent Runtime (Vertex AI Agent Engine) and is deployed with `agents-cli`. On each request it takes the end-user identity token forwarded by Gemini Enterprise, runs an OAuth 2.0 Token Exchange against SAP Cloud Identity Services — authenticating itself with a client assertion signed by the `sap-ias-signer` GCP service account via Google's signJwt API — to obtain a access token scoped to the downstream resource, then relays the call to the target agent over A2A. The resulting architecture is shown below.
  
 ![Architecture overview](./images/architecture.svg)
  
 ### SAP side
 - **Joule Work** (powered by Joule) - authoring and orchestration: *Joule Studio* (build agents via *Custom Agents* and *Agent Extensions* / Intent-based Development), *Joule Orchestrator* (Agent Harness - routes via Skills and A2A), *Tools* (Data Products, Grounding, Knowledge Graph, Ontology).
-- **Managed Runtimes** - host Joule Agents, Custom Agents & MCP Servers; connected to SAP Agent Gateway via A2A and MCP.
-- **SAP Agent Gateway** - Discovery & Invocation of Agentic Resources; the entry point for external A2A traffic crossing the network boundary.
+- **Managed Runtimes** - host Joule Agents, Custom Agents & MCP Servers; connected to SAP's agent gateway via A2A and MCP.
+- **SAP's agent gateway** - Discovery & Invocation of Agentic Resources; the entry point for external A2A traffic crossing the network boundary.
 - **Autonomous Suite** - SAP LoB agents and apps: Autonomous Finance, Autonomous Spend, Autonomous SCM, Autonomous HCM, Autonomous CX, Industry AI.
-- **SAP Cloud Identity Services** - identity hub; brokers identity and issues the user-scoped access token the SAP Agent Gateway accepts, so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
+- **SAP Cloud Identity Services** - identity hub; brokers identity and issues the user-scoped access token SAP's agent gateway accepts, so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
   
 ### GCP side
 - **Application Clients** (Mobile/Desktop/Web) - the end-user entry point.
@@ -33,29 +33,29 @@ The integration uses a **three-legged OAuth 2.0 / OIDC flow** so that the end-us
 **Auth flow (step by step)**
 
 1. The user opens Gemini Enterprise and tags the Bridge Agent.
-2. Gemini Enterprise redirects to **SAP CIS** (the configured authorization URI) to sign the user in.
-3. The user authenticates; SAP CIS issues an authorization code that Gemini Enterprise exchanges for an **end-user identity token** (OIDC).
+2. Gemini Enterprise redirects to **SAP Cloud Identity Services** (the configured authorization URI) to sign the user in.
+3. The user authenticates; SAP Cloud Identity Services issues an authorization code that Gemini Enterprise exchanges for an **end-user identity token** (OIDC).
 4. Gemini Enterprise forwards this end-user identity token to the Bridge Agent with every request.
-5. The Bridge Agent performs an **OAuth 2.0 Token Exchange** at SAP CIS (`oauth2/token`): it presents the end-user identity token together with a **client assertion** — a short-lived JWT signed by the GCP runtime service account (`sap-ias-signer`) — instead of a static client secret.
-6. SAP CIS verifies the client assertion using the JWKS endpoint of the GCP service account, then returns a **downstream-scoped access token** limited to the `TOKEN_EXCHANGE_RESOURCE` (e.g. `urn:sap:identity:application:provider:name:agent-gateway`).
-7. The Bridge Agent calls the **SAP Agent Gateway** over A2A, attaching the downstream-scoped access token. The gateway forwards the request to the target Joule/Custom agent.
+5. The Bridge Agent performs an **OAuth 2.0 Token Exchange** at SAP Cloud Identity Services (`oauth2/token`): it presents the end-user identity token together with a **client assertion** — a short-lived JWT signed by the GCP runtime service account (`sap-ias-signer`) — instead of a static client secret.
+6. SAP Cloud Identity Services verifies the client assertion using the JWKS endpoint of the GCP service account, then returns a **downstream-scoped access token** limited to the `TOKEN_EXCHANGE_RESOURCE` (e.g. `urn:sap:identity:application:provider:name:agent-gateway`).
+7. The Bridge Agent calls **SAP's agent gateway** over A2A, attaching the downstream-scoped access token. The gateway forwards the request to the target Joule/Custom agent.
 
 **Key security properties**
 
-- **No static secrets on GCP**: the Bridge Agent never holds a client secret. It authenticates to SAP CIS via a signed JWT (client assertion), where the signing key lives in the GCP IAM key store.
+- **No static secrets on GCP**: the Bridge Agent never holds a client secret. It authenticates to SAP Cloud Identity Services via a signed JWT (client assertion), where the signing key lives in the GCP IAM key store.
 - **Least-privilege token scoping**: the access token issued in step 6 is explicitly scoped to a single downstream resource, preventing token reuse across services.
 - **Runtime service account impersonation**: the Bridge Agent's runtime identity is granted `roles/iam.serviceAccountTokenCreator` on `sap-ias-signer`, so it can sign assertions without ever downloading a private key.
-- **Principal Propagation**: SAP CIS validates the original end-user identity at every OAuth 2.0 Token Exchange, so SAP authorization policies (roles, attributes) apply per user, not per service account.
+- **Principal Propagation**: SAP Cloud Identity Services validates the original end-user identity at every OAuth 2.0 Token Exchange, so SAP authorization policies (roles, attributes) apply per user, not per service account.
  
 ---
  
 ## Prerequisites
  
-**SAP side** - complete the one-time SAP onboarding in → [Common Setup](../00-common-setup/README.md) before proceeding: register an SAP Agent Gateway consumer system in SAP for Me, assign it to the three formations (in the mandatory order), and configure authentication in SAP Cloud Identity Services. You will need:
+**SAP side** - complete the one-time SAP onboarding in → [Common Setup](../00-common-setup/README.md) before proceeding: register a consumer system for SAP's agent gateway in SAP for Me, assign it to the three formations (in the mandatory order), and configure authentication in SAP Cloud Identity Services. You will need:
 - Access to **SAP for Me** with the **cloud administrator** role.
 - Administrator access to the **SAP Cloud Identity Services** tenant.
-- A **Joule or Custom agent** deployed and reachable behind the **SAP Agent Gateway**.
-- A business **user provisioned in SAP CIS** and authorized (in the agent's RBAC group) for the target agent.
+- A **Joule or Custom agent** deployed and reachable behind **SAP's agent gateway**.
+- A business **user provisioned in SAP Cloud Identity Services** and authorized (in the agent's RBAC group) for the target agent.
 
 **GCP side:**
 - A GCP Project with:
@@ -99,21 +99,21 @@ gcloud services enable iamcredentials.googleapis.com --project <your-project-id>
 Create a Google Cloud service account. You can change the `sap-ias-signer` account ID and display name as needed.
 ```
 gcloud iam service-accounts create sap-ias-signer --project <your-project-id> `
-  --display-name "SAP CIS client-assertion signer"
+  --display-name "SAP Cloud Identity Services client-assertion signer"
 ```
 
 Verify that the service account creation was successful.
 
 ```
 gcloud iam service-accounts create sap-ias-signer --project <your-project-id> `
-  --display-name "SAP CIS client-assertion signer"
+  --display-name "SAP Cloud Identity Services client-assertion signer"
 
 # Expected Output:
 # DISPLAY NAME                                         EMAIL                                                               DISABLED
-# SAP CIS client-assertion signer                      sap-ias-signer@<your-project-id>.iam.gserviceaccount.com             False
+# SAP Cloud Identity Services client-assertion signer                      sap-ias-signer@<your-project-id>.iam.gserviceaccount.com             False
 ```
 
-This command creates only the identity. It does not yet grant roles, create or download keys, or configure the account to sign SAP CIS client assertions.
+This command creates only the identity. It does not yet grant roles, create or download keys, or configure the account to sign SAP Cloud Identity Services client assertions.
 
 The resulting principal is `sap-ias-signer@<your-project-id>.iam.gserviceaccount.com`. Use it later to configure the GCP-Agent-Bridge `RUNTIME_SA_EMAIL`.
 
@@ -143,12 +143,12 @@ Complete the fields as follows:
 | `Refresh Interval` | 24 hours |
 | `Corporate Identity Provider - Name` | **Leave blank!** |
 | `Subject` | Client ID from the credentials created previously. |
-| `Audience` | The SAP CIS tenant base URL, e.g. `https://<tenant>.accounts.ondemand.com` |
+| `Audience` | The SAP Cloud Identity Services tenant base URL, e.g. `https://<tenant>.accounts.ondemand.com` |
 | `API Permission Groups` | **Leave blank!**
 
 Save the configuration.
 
-Verify that the SAP Agent Gateway is present under `Applications & Resources` &rarr; `<your-application>` &rarr; `Dependencies`. This dependency should be automatically created while creating the Formations.
+Verify that SAP's agent gateway is present under `Applications & Resources` &rarr; `<your-application>` &rarr; `Dependencies`. This dependency should be automatically created while creating the Formations.
 
 ![](./images/agw-dependency.png)
 
@@ -168,10 +168,10 @@ Set the following variables:
 |---|---|---|
 | `MODEL` | No | For example, `gemini-3.8-flash`. |
 | `AGENT_NAME` | Yes | For example, `gcp_agent_bridge`, you also need to adjust this in the `agents-cli-manifest.yaml`! |
-| `DOWNSTREAM_AGENT_URL` | Yes | The downstream A2A JSON-RPC endpoint or the SAP Agent Gateway A2A URL. |
-| `OAUTH_CLIENT_ID` | Yes | The `client_id` of the **SAP CIS application** created in step 2. |
-| `OAUTH_TOKEN_HOST` | Yes | The SAP CIS tenant base URL, for example `https://<tenant>.accounts.ondemand.com`. |
-| `TOKEN_EXCHANGE_RESOURCE` | Yes | The resource or audience that identifies the downstream service to SAP CIS, for example `urn:sap:identity:application:provider:name:agent-gateway`. |
+| `DOWNSTREAM_AGENT_URL` | Yes | The downstream A2A JSON-RPC endpoint or SAP's agent gateway A2A URL. |
+| `OAUTH_CLIENT_ID` | Yes | The `client_id` of the **SAP Cloud Identity Services application** created in step 2. |
+| `OAUTH_TOKEN_HOST` | Yes | The SAP Cloud Identity Services tenant base URL, for example `https://<tenant>.accounts.ondemand.com`. |
+| `TOKEN_EXCHANGE_RESOURCE` | Yes | The resource or audience that identifies the downstream service to SAP Cloud Identity Services, for example `urn:sap:identity:application:provider:name:agent-gateway`. |
 | `RUNTIME_SA_EMAIL` | Yes | The email of the GCP service account created in step 1 that signs the client assertion, for example `<sa>@<project>.iam.gserviceaccount.com`. |
 | `GE_AUTH_ID` | No | Set this only when more than one Gemini Enterprise authorization is registered on the agent; it selects the forwarded token to read. |
 
@@ -252,8 +252,8 @@ Select `Add authorization` and enter the following values:
 | Variable | Value |
 |-|-|
 | `Authorization name` | Enter a name of your choice. |
-| `Client ID` | The `client_id` of the **SAP CIS application** created in step 2. |
-| `Client secret` | The `client_secret` of the **SAP CIS application** created in step 2. |
+| `Client ID` | The `client_id` of the **SAP Cloud Identity Services application** created in step 2. |
+| `Client secret` | The `client_secret` of the **SAP Cloud Identity Services application** created in step 2. |
 | `Token URI` | `https://<tenant>.accounts.ondemand.com/oauth2/token` |
 | `Authorization URI` | `https://<tenant>.accounts400.ondemand.com/oauth2/authorize?response_type=code&scope=openid`
 | `PKCE verification enabled` | unchecked |
@@ -264,7 +264,7 @@ Select `Next` and enter the following values:
 | Variable | Value |
 |-|-|
 | `Agent name` | Enter a name of your choice. |
-| `Agent description` | Enter a description, for example: "Proxy agent that forwards requests to an SAP agent through SAP Agent Gateway." |
+| `Agent description` | Enter a description, for example: "Proxy agent that forwards requests to an SAP agent through SAP's agent gateway." |
 | `Agent Runtime reasoning engine` | Paste the URI noted at the beginning of this step, for example `projects/<project-number>/locations/<region>/reasoningEngines/<engine-number>`. |
 
 Select `Create`.
@@ -286,7 +286,7 @@ Select `Create`.
 ├── images/
 │   ├── architecture.drawio                          ← Editable architecture diagram source
 │   ├── architecture.drawio.png                      ← Rendered architecture diagram
-│   └── agw-dependency.png                           ← SAP Agent Gateway dependency diagram
+│   └── agw-dependency.png                           ← SAP's agent gateway dependency diagram
 └── code/
     ├── README.md                                    ← Code documentation and request-flow diagrams
     └── gcp-agent-bridge/                            ← Gemini Enterprise → A2A proxy agent
@@ -310,7 +310,7 @@ Select `Create`.
 ---
  
 ## Known Limitations
-- **Proxy Agent** - Although Gemini Enterprise allows custom agents to be added via A2A, it is not possible to configure the authentication so that tokens can be scoped to the SAP Agent Gateway. This makes an OAuth 2.0 Token Exchange after the three-legged auth necessary, and for this reason a proxy agent (GCP-Agent-Bridge) is required for the GCP-to-SAP integration.
+- **Proxy Agent** - Although Gemini Enterprise allows custom agents to be added via A2A, it is not possible to configure the authentication so that tokens can be scoped to SAP's agent gateway. This makes an OAuth 2.0 Token Exchange after the three-legged auth necessary, and for this reason a proxy agent (GCP-Agent-Bridge) is required for the GCP-to-SAP integration.
 - **Token Caching** - The agent runs the OAuth 2.0 Token Exchange on every request. It mints a fresh client assertion and performs a full OAuth 2.0 Token Exchange on each call. Still-valid downstream tokens are not reused, which adds some latency.
 - **Non-A2A Agent Type** - While the GCP-Agent-Bridge is an A2A-capable agent that communicates downstream via A2A, it is deployed to Google's Agent Runtime through `agents-cli` as an Agent Development Kit (ADK) agent. As a result, the agent appears with the agent type `Non A2A` in Google's Agent Registry. As no information on this topic was available online, it is not guaranteed that communication between Gemini Enterprise and the GCP-Agent-Bridge uses A2A.
 - **Error Handling** - The GCP-Agent-Bridge surfaces failures as chat text in Gemini Enterprise rather than as structured A2A errors. This is not the standard approach to error handling, but it makes debugging considerably easier.
@@ -320,7 +320,7 @@ Select `Create`.
 ## References
 
 - [Gemini Enterprise Integration with Joule Agents](https://architecture.learning.sap.com/docs/ref-arch/c9a3f8)
-- [SAP Agent Gatway formation prerequisite](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/85abb1b3c5734138826f02d079b04975/a0465991ba964736a781c275ddd852db.html?state=DRAFT&ai=true#loioc1e0e4ef9ce145eea314bbb9e9f61514)
+- [SAP's agent gateway formation prerequisite](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/85abb1b3c5734138826f02d079b04975/a0465991ba964736a781c275ddd852db.html?state=DRAFT&ai=true#loioc1e0e4ef9ce145eea314bbb9e9f61514)
 - [Principal Propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation)
 - [Credentials API documentation](https://docs.cloud.google.com/iam/docs/reference/credentials/rest)
 - [Google Cloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk)
