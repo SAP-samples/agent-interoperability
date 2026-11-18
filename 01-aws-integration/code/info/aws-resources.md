@@ -55,7 +55,7 @@ aws bedrock-agentcore-control create-oauth2-credential-provider \
   --region <region>
 ```
 
-**What it does:** Creates an AgentCore Identity OAuth2 credential provider that performs an on-behalf-of (OBO) token exchange with SAP CIS. When the runtime needs to call a SAP agent, it calls `GetResourceOauth2Token` with the user's WorkloadAccessToken — this provider authenticates to CIS using `private_key_jwt` (signed via KMS, no secret in the runtime), exchanges the WAT for a user-scoped CIS token, and returns it as the Bearer on the A2A call.
+**What it does:** Creates an AgentCore Identity OAuth2 credential provider that performs an on-behalf-of (OBO) token exchange with SAP CIS. When the runtime needs to call a SAP agent, it calls `GetResourceOauth2Token` with the user's WorkloadAccessToken — this provider authenticates to SAP Cloud Identity Services using `private_key_jwt` (signed via KMS, no secret in the runtime), exchanges the WAT for a user-scoped SAP Cloud Identity Services token, and returns it as the Bearer on the A2A call.
 
 **Output / identifiers recorded:**
 
@@ -95,7 +95,7 @@ aws dynamodb put-item \
   --region <region>
 ```
 
-**What it does:** Creates the live config table the runtime reads on every request (cached for 30 s). A single row keyed `current` holds the full runtime config as a JSON string — model id, SAP agent list with A2A endpoints, CIS settings, and rate-limit settings. Changing the model or agent list is a DynamoDB edit, no redeploy needed.
+**What it does:** Creates the live config table the runtime reads on every request (cached for 30 s). A single row keyed `current` holds the full runtime config as a JSON string — model id, SAP agent list with A2A endpoints, SAP Cloud Identity Services settings, and rate-limit settings. Changing the model or agent list is a DynamoDB edit, no redeploy needed.
 
 **Output / identifiers recorded:**
 
@@ -224,7 +224,7 @@ aws iam put-role-policy \
   }'
 ```
 
-**What it does:** Creates a dedicated least-privilege execution role for the runtime. Each `Sid` is scoped tightly: S3 read limited to the cookbook prefix, WorkloadToken scoped to `cookbook_agentcore_sap_mcp-*` identities only, DynamoDB read limited to the config table, KMS Sign limited to the CIS assertion key.
+**What it does:** Creates a dedicated least-privilege execution role for the runtime. Each `Sid` is scoped tightly: S3 read limited to the cookbook prefix, WorkloadToken scoped to `cookbook_agentcore_sap_mcp-*` identities only, DynamoDB read limited to the config table, KMS Sign limited to the SAP Cloud Identity Services assertion key.
 
 **Output / identifiers recorded:** `arn:aws:iam::<account-id>:role/cookbook-agentcore-sap-mcp-runtime` → `EXEC_ROLE`
 
@@ -237,7 +237,7 @@ aws iam put-role-policy \
 ```bash
 aws bedrock-agentcore-control create-agent-runtime \
   --agent-runtime-name "cookbook_agentcore_sap_mcp" \
-  --description "Cookbook POC: MCP proxy agent — Amazon Quick → AgentCore → SAP LMS Compliance via A2A + CIS OBO" \
+  --description "Cookbook POC: MCP proxy agent — Amazon Quick → AgentCore → SAP LMS Compliance via A2A + SAP Cloud Identity Services OBO" \
   --agent-runtime-artifact '{"codeConfiguration":{"code":{"s3":{"bucket":"cookbook-agentcore-code-<account-id>-<region>","prefix":"cookbook-agentcore-sap/deployment-mcp-llm.zip"}},"runtime":"PYTHON_3_13","entryPoint":["mcp_server.py"]}}' \
   --role-arn "arn:aws:iam::<account-id>:role/cookbook-agentcore-sap-mcp-runtime" \
   --network-configuration '{"networkMode":"PUBLIC"}' \
@@ -248,7 +248,7 @@ aws bedrock-agentcore-control create-agent-runtime \
   --region <region>
 ```
 
-**What it does:** Deploys `mcp_server.py` as a direct-code AgentCore runtime on Python 3.13/ARM64. The JWT authorizer validates inbound Cognito access tokens (issuer = pool, audience = app client, allowed scopes = `openid email profile`). The runtime reads live config from DynamoDB, runs the Bedrock Nova Lite tool loop, and calls SAP's agent gateway over A2A with the CIS OBO token.
+**What it does:** Deploys `mcp_server.py` as a direct-code AgentCore runtime on Python 3.13/ARM64. The JWT authorizer validates inbound Cognito access tokens (issuer = pool, audience = app client, allowed scopes = `openid email profile`). The runtime reads live config from DynamoDB, runs the Bedrock Nova Lite tool loop, and calls SAP's agent gateway over A2A with the SAP Cloud Identity Services OBO token.
 
 > ⚠️ `allowedScopes` is **required** for the Amazon Quick connector (Task 7). The runtime advertises these scopes during Quick's OAuth discovery; without them Quick falls back to `offline_access` and Cognito rejects the login with `invalid_scope`. The values must match the Cognito app client's `AllowedOAuthScopes`. See [Troubleshooting in ROADMAP.md](../ROADMAP.md#troubleshooting).
 

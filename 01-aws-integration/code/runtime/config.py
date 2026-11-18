@@ -75,7 +75,7 @@ class IasSettings:
             )
         ).strip()
         if not resource.startswith("urn:") or not provider:
-            raise ValueError("invalid CIS resource URN or AgentCore credential provider")
+            raise ValueError("invalid SAP Cloud Identity Services resource URN or AgentCore credential provider")
         return cls(resource, provider)
 
 
