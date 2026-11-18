@@ -3,7 +3,7 @@
 LLM-backed variant: instead of forwarding the request to one hardcoded SAP agent,
 this delegates to the shared AgentService brain (runtime/agent.py). AgentService
 runs a Bedrock tool loop that decides which SAP agent(s) to call, mints the CIS
-on-behalf-of token per agent, and calls SAP Agent Gateway over A2A. This module is
+on-behalf-of token per agent, and calls SAP's agent gateway over A2A. This module is
 the MCP front door to that brain.
 
 Per-request identity arrives as inbound HTTP headers, captured by an ASGI

@@ -3,7 +3,7 @@
 This is the on-behalf-of (OBO) step of the identity chain. The runtime never holds
 an CIS client secret or signs an assertion itself: it hands AgentCore Identity the
 user's WorkloadAccessToken (WAT) and asks it to exchange that for a user-scoped CIS
-token whose audience is SAP Agent Gateway. AgentCore Identity performs the
+token whose audience is SAP's agent gateway. AgentCore Identity performs the
 `private_key_jwt` client authentication (KMS-signed) against CIS behind the scenes.
 
 Tokens are cached per (user, resource, config fingerprint) until shortly before
@@ -31,7 +31,7 @@ class CisExchangeError(RuntimeError):
 
 def _jwt_exp(token: str) -> float | None:
     # Read `exp` from the JWT payload to drive cache expiry. Unverified decode:
-    # the token is validated by its consumer (SAP Agent Gateway), not here.
+    # the token is validated by its consumer (SAP's agent gateway), not here.
     try:
         encoded = token.split(".")[1]
         encoded += "=" * (-len(encoded) % 4)
@@ -86,7 +86,7 @@ class CisTokenProvider:
                 return cached.token
         try:
             # The OBO exchange: swap the workload token for a user-scoped CIS token.
-            # `resources` sets the audience (SAP Agent Gateway's resource URN) and
+            # `resources` sets the audience (SAP's agent gateway's resource URN) and
             # token_format=jwt asks CIS for a JWT rather than an opaque token.
             payload = self._client(region).get_resource_oauth2_token(
                 workloadIdentityToken=workload_access_token,

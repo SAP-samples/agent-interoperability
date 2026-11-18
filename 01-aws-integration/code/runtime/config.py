@@ -45,10 +45,10 @@ class SapAgent:
             raise ValueError("SAP agent name and description are required")
         gateway = _https_url(str(raw.get("gateway_url", "")), "gateway_url")
         host = urlparse(gateway).hostname or ""
-        # Guardrail: only accept real SAP Agent Gateway hosts, so a misconfigured
+        # Guardrail: only accept real SAP's agent gateway hosts, so a misconfigured
         # row can't point the CIS-authenticated call at an arbitrary endpoint.
         if not host.endswith(".sapdas.cloud.sap"):
-            raise ValueError("SAP agent URLs must use an SAP Agent Gateway host")
+            raise ValueError("SAP agent URLs must use an SAP's agent gateway host")
         aud = str(raw.get("aud_urn") or "").strip() or None
         return cls(agent_id, name, description, gateway, aud)
 

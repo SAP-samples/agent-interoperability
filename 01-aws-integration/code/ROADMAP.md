@@ -4,7 +4,7 @@ This agent forwards every request to a **SAP agent** over A2A, using the end
 user's **SAP identity**. The identity is established once at **Amazon Cognito**
 (the Amazon Quick MCP connector login) and propagated forward — through a
 WorkloadAccessToken (WAT) and an **on-behalf-of token exchange** at SAP CIS —
-until it reaches SAP Agent Gateway as a user-scoped CIS token. The agent runs
+until it reaches SAP's agent gateway as a user-scoped CIS token. The agent runs
 **no OAuth consent of its own** and never holds a client secret.
 
 > **OIDC provider.** This roadmap uses **Amazon Cognito** as the connector's login
@@ -27,13 +27,13 @@ Amazon Quick ──(Cognito access token)──► AgentCore Runtime
                                              SAP CIS
                                                 │ user-scoped token
                                                 ▼
-                                       SAP Agent Gateway (A2A)
+                                       SAP's agent gateway (A2A)
 ```
 
 The Amazon Quick MCP connector sends the Cognito access token straight to the
 Runtime's `/invocations` endpoint; the Runtime's CUSTOM_JWT authorizer validates
 it. The runtime adds one back-channel step before each SAP call: it asks AgentCore
-Identity to exchange the WAT for a token whose audience is **SAP Agent Gateway**,
+Identity to exchange the WAT for a token whose audience is **SAP's agent gateway**,
 preserving the user's email as `sub`.
 
 ---
@@ -43,7 +43,7 @@ preserving the user's email as `sub`.
 - An **AWS account** with: Bedrock model access enabled for your chosen model,
   and permission to create KMS keys, IAM roles, DynamoDB tables, Cognito pools,
   and AgentCore (Runtime / Identity) resources.
-- A **SAP BTP** landscape exposing an A2A agent behind **SAP Agent Gateway**,
+- A **SAP BTP** landscape exposing an A2A agent behind **SAP's agent gateway**,
   protected by **SAP CIS**.
 - Admin rights in **SAP CIS** to register an OAuth application and a JWT trust.
 - A test user present in both Cognito and SAP CIS with the same `email` — the OBO
@@ -103,12 +103,12 @@ JWKS URL.
 
 ---
 
-## Task 3 (SAP) — Onboard the AWS agent as an Agent Gateway Consumer in SAP CIS
+## Task 3 (SAP) — Onboard the AWS agent as an SAP's agent gateway Consumer in SAP CIS
 
-Register the AWS agent in **SAP for Me** as an **Agent Gateway Consumer** system, assign it to the three formations, and configure IdP trust in **SAP Cloud Identity Services (CIS)**. Full click-by-click steps are in the SAP documentation:
-→ [Creating an Agent Gateway Consumer System and assigning it to formations](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/a0465991ba964736a781c275ddd852db.html)
+Register the AWS agent in **SAP for Me** as an **SAP's agent gateway Consumer** system, assign it to the three formations, and configure IdP trust in **SAP Cloud Identity Services (CIS)**. Full click-by-click steps are in the SAP documentation:
+→ [Creating an SAP's agent gateway Consumer System and assigning it to formations](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/a0465991ba964736a781c275ddd852db.html)
 
-1. **Create the Agent Gateway Consumer system** in SAP for Me. Set its **JWKS Endpoint URL** to the JWKS you published in Task 2.
+1. **Create the SAP's agent gateway Consumer system** in SAP for Me. Set its **JWKS Endpoint URL** to the JWKS you published in Task 2.
 2. **Assign the system to the three formations, in the mandatory order.**
 3. **Record** the OIDC application's **client id** (CIS admin console → Applications & Resources → Applications — the application created for this system) → `CIS_CLIENT_ID`, and note your tenant base URL (e.g. `https://<tenant>.accounts.ondemand.com`) and its discovery URL (`/.well-known/openid-configuration`).
 4. **Configure Identity Provider trust** so CIS validates the tokens issued via your IdP (the JWKS/IdP-trust path — no client secret is created):
@@ -117,14 +117,14 @@ Register the AWS agent in **SAP for Me** as an **Agent Gateway Consumer** system
 
 ---
 
-## Task 4 (SAP) — Discover the SAP agent behind Agent Gateway
+## Task 4 (SAP) — Discover the SAP agent behind SAP's agent gateway
 
-Use the Agent Gateway's **Agentic Resource Discovery (ARD)** endpoints to list the available SAP agents and derive the two values this cookbook needs: the agent's A2A endpoint (`gateway_url`) and the Gateway resource URN (`ias.resource_urn`).
+Use the SAP's agent gateway's **Agentic Resource Discovery (ARD)** endpoints to list the available SAP agents and derive the two values this cookbook needs: the agent's A2A endpoint (`gateway_url`) and the Gateway resource URN (`ias.resource_urn`).
 
 Full reference:
 → [Discovering SAP Agents Using Agentic Resource Discovery Endpoints](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/418a00aac347473e866cb7987119b9f9.html)
 
-1. **Get the Agent Gateway base URL** — in SAP for Me → Customer Landscape → Systems, open the **Agent Gateway** system and note its URL (e.g. `https://eu12.access.sapdas.cloud.sap`). This is `<agent-gateway-base-url>`.
+1. **Get the SAP's agent gateway base URL** — in SAP for Me → Customer Landscape → Systems, open the **SAP's agent gateway** system and note its URL (e.g. `https://eu12.access.sapdas.cloud.sap`). This is `<agent-gateway-base-url>`.
 2. **Get a token for the ARD call.** Discovery accepts a **technical token** (client credentials, no logged-in user) — note that invoking an agent later requires a *user* token, not this one. Request it from CIS:
    ```
    POST <CIS-tenant-url>/oauth2/token
@@ -291,7 +291,7 @@ python3 tests/integration/run_once.py "show the team compliance trainings"
 [2/3] tools/list     → sap_assistant tool listed
 [3/3] tools/call     → HTTP 200, SAP agent answer received
 ```
-Full chain confirmed: Cognito → Runtime → Bedrock → CIS OBO → SAP Agent Gateway → SAP agent → response.
+Full chain confirmed: Cognito → Runtime → Bedrock → CIS OBO → SAP's agent gateway → SAP agent → response.
 
 ---
 
@@ -308,7 +308,7 @@ Issues we actually hit building this POC are listed first; the rest are symptoms
 | `sap_assistant` returns `missing_authorization` / `missing_workload_token` | The connector did not forward the token, or WAT injection is off. Confirm the connector sends the Cognito access token and the runtime authorizer matches the app client. |
 | CIS exchange fails (`AgentCore Identity CIS exchange failed`) | Check the credential provider name, the KMS key ARN/`kid`, the CIS client id, and that the `resource` URN matches the consumed-API dependency set up in Task 3. |
 | CIS cannot verify the assertion | The published JWKS `kid` must equal the KMS key id, and the JWKS URL on the CIS app must be reachable and current (Tasks 2 and 3). |
-| SAP Agent Gateway returns 401/403 with a valid-looking token | Audience/scope enforcement at SAP — confirm `resource_urn` targets the Gateway and the user has a resolvable CIS identity. |
+| SAP's agent gateway returns 401/403 with a valid-looking token | Audience/scope enforcement at SAP — confirm `resource_urn` targets the Gateway and the user has a resolvable CIS identity. |
 | Login popup fails with redirect mismatch | The Quick callback URL is not on the Cognito app client's allowed callbacks (Task 0.2). |
 | CIS resolves no user | The Cognito **access** token lacks `email` — add it in the pre-token-generation Lambda (Task 0.3). |
 | CIS exchange rejects the token for missing/invalid `aud` | The Cognito access token has no `aud` by default — the pre-token Lambda must set `aud` = app client id (Task 0.3). |

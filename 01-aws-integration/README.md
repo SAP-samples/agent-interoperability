@@ -1,12 +1,12 @@
 # Amazon Web Services - SAP Agent Interoperability
 
-This cookbook explains how to connect an agent on **Amazon Quick** to an agent on the **SAP Business AI Platform** through **SAP Agent Gateway**, so the Amazon Quick agent can delegate a task and get the SAP agent's answer back - with real per-user identity. It corresponds to the Reference Architecture [**Amazon Quick Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/b4d7e2).
+This cookbook explains how to connect an agent on **Amazon Quick** to an agent on the **SAP Business AI Platform** through **SAP's agent gateway**, so the Amazon Quick agent can delegate a task and get the SAP agent's answer back - with real per-user identity. It corresponds to the Reference Architecture [**Amazon Quick Integration with Joule Agents**](https://architecture.learning.sap.com/docs/ref-arch/b4d7e2).
 
 ## Architecture Overview
 
-Connecting an agent on **Amazon Quick** to an agent on the SAP Business AI Platform means bridging two distinct trust domains — AWS's (Amazon Cognito / IAM Identity Center and AWS AgentCore) and SAP's (IAS and the Agent Gateway). The integration is an MCP proxy agent: it forwards every business request to the downstream SAP agent over A2A under the signed-in user's identity, propagated from Amazon Quick all the way into SAP with no second login.
+Connecting an agent on **Amazon Quick** to an agent on the SAP Business AI Platform means bridging two distinct trust domains — AWS's (Amazon Cognito / IAM Identity Center and AWS AgentCore) and SAP's (SAP Cloud Identity Services and the SAP's agent gateway). The integration is an MCP proxy agent: it forwards every business request to the downstream SAP agent over A2A under the signed-in user's identity, propagated from Amazon Quick all the way into SAP with no second login.
 
-The identity handoff is handled by **AWS AgentCore**: the user signs in via Amazon Cognito, and AgentCore performs an on-behalf-of token exchange with SAP Cloud Identity Services (IAS) to obtain a token scoped to the SAP Agent Gateway — with the signing key stored in AWS KMS, so no client secret ever lives in the runtime. The resulting architecture is shown below.
+The identity handoff is handled by **AWS AgentCore**: the user signs in via Amazon Cognito, and AgentCore performs an on-behalf-of token exchange with SAP Cloud Identity Services to obtain a token scoped to the SAP's agent gateway — with the signing key stored in AWS KMS, so no client secret ever lives in the runtime. The resulting architecture is shown below.
 
 > **Note:** This walkthrough uses **Amazon Cognito** as the connector's OIDC provider, but any OIDC-compliant provider works — e.g. AWS IAM Identity Center, or a corporate IdP (Entra ID, Okta, Ping) federated into it. Wherever this document says "Cognito", read it as "the configured OIDC provider".
 
@@ -15,15 +15,15 @@ The identity handoff is handled by **AWS AgentCore**: the user signs in via Amaz
 ### SAP side
 
 - **Joule Work** (powered by Joule) - authoring and orchestration: *Joule Studio* (build agents via *Custom Agents* and *Agent Extensions* / Intent-based Development), *Joule Orchestrator* (Agent Harness - routes via Skills and A2A), *Tools* (Data Products, Grounding, Knowledge Graph, Ontology).
-- **Managed Runtimes** - host Joule Agents, Custom Agents & MCP Servers; connected to Agent Gateway via A2A and MCP.
-- **Agent Gateway** - Discovery & Invocation of Agentic Resources; the entry point for external A2A traffic crossing the network boundary.
+- **Managed Runtimes** - host Joule Agents, Custom Agents & MCP Servers; connected to SAP's agent gateway via A2A and MCP.
+- **SAP's agent gateway** - Discovery & Invocation of Agentic Resources; the entry point for external A2A traffic crossing the network boundary.
 - **Autonomous Suite** - SAP LoB agents and apps: Autonomous Finance, Autonomous Spend, Autonomous SCM, Autonomous HCM, Autonomous CX, Industry AI.
-- **SAP Cloud Identity Services (IAS)** - identity hub; brokers identity and issues the user-scoped token the Agent Gateway accepts, so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
+- **SAP Cloud Identity Services** - identity hub; brokers identity and issues the user-scoped token the SAP's agent gateway accepts, so every delegated task runs under the signed-in business user, respecting the SAP authorizations already in place.
 
 ### AWS side
 
 - **Amazon Quick** - Chat interface + Custom MCP Connector (handles Cognito login, carries the token on every request).
-- **AWS AgentCore** - Runtime (JWT authorizer, WAT minting, Bedrock tool loop) + Identity (OBO token exchange with IAS via private_key_jwt).
+- **AWS AgentCore** - Runtime (JWT authorizer, WAT minting, Bedrock tool loop) + Identity (OBO token exchange with SAP Cloud Identity Services via private_key_jwt).
 - **Amazon Cognito** - OIDC provider for user auth; AWS IAM Identity Center or any OIDC-compliant IdP can substitute.
 
 ### Identity and Security
@@ -37,13 +37,13 @@ The agent runs **no OAuth consent flow of its own**. The chain is:
    **WorkloadAccessToken (WAT)** from it — a platform credential binding the
    workload identity to the user identity — injected as a request header.
 3. When a SAP agent must be called, the Runtime asks **AgentCore Identity** for an
-   on-behalf-of token exchange with **IAS**. IAS resolves the user by email
-   and returns an access token scoped to **SAP Agent Gateway**, with the user's
+   on-behalf-of token exchange with **SAP Cloud Identity Services**. SAP Cloud Identity Services resolves the user by email
+   and returns an access token scoped to **SAP's agent gateway**, with the user's
    email as `sub`.
-4. The Runtime sends that IAS token as a `Bearer` credential on the **A2A
-   JSON-RPC** call to SAP Agent Gateway.
+4. The Runtime sends that SAP Cloud Identity Services token as a `Bearer` credential on the **A2A
+   JSON-RPC** call to SAP's agent gateway.
 
-Client authentication to IAS uses **`private_key_jwt` (RFC 7523)** — the signing
+Client authentication to SAP Cloud Identity Services uses **`private_key_jwt` (RFC 7523)** — the signing
 key lives in **AWS KMS** and the assertion is minted inside AgentCore Identity, so
 no secret ever lives in the runtime.
 
@@ -51,18 +51,18 @@ no secret ever lives in the runtime.
 
 ## Prerequisites
 
-**SAP side** - complete the one-time SAP onboarding in → [Common Setup](../00-common-setup/README.md) before proceeding: register an Agent Gateway consumer system in SAP for Me, assign it to the three formations (in the mandatory order), and configure authentication in SAP Cloud Identity Services (IAS). You will need:
+**SAP side** - complete the one-time SAP onboarding in → [Common Setup](../00-common-setup/README.md) before proceeding: register an SAP's agent gateway consumer system in SAP for Me, assign it to the three formations (in the mandatory order), and configure authentication in SAP Cloud Identity Services. You will need:
 - Access to **SAP for Me** with the **cloud administrator** role.
-- Administrator access to the **SAP Cloud Identity Services (IAS)** tenant.
-- A **Joule or Custom agent** deployed and reachable behind the **SAP Agent Gateway**.
-- A business **user provisioned in IAS** and authorized (in the agent's RBAC group) for the target agent.
+- Administrator access to the **SAP Cloud Identity Services** tenant.
+- A **Joule or Custom agent** deployed and reachable behind the **SAP's agent gateway**.
+- A business **user provisioned in SAP Cloud Identity Services** and authorized (in the agent's RBAC group) for the target agent.
 
 **AWS side:**
 - An **AWS account** with: Bedrock model access enabled for your chosen model,
   and permission to create KMS keys, IAM roles, DynamoDB tables, Cognito pools,
   and AgentCore (Runtime / Identity) resources.
 - **AWS CLI** configured for the account/region, and Python 3.13.
-- A test user in **Amazon Cognito** whose `email` matches the IAS user — the OBO
+- A test user in **Amazon Cognito** whose `email` matches the SAP Cloud Identity Services user — the OBO
   exchange resolves the SAP user by that email.
 
 ---
@@ -89,9 +89,9 @@ cp env.example .envrc
 | `AWS_REGION`, `AWS_ACCOUNT` | deploy | Target account and region. |
 | `COGNITO_USER_POOL_ID`, `COGNITO_APP_CLIENT_ID` | deploy | End-user auth; become the Runtime's JWT authorizer (issuer + allowed audience). |
 | `COGNITO_DOMAIN` | smoke test | Cognito Hosted UI domain (`run_once.py` login). |
-| `IAS_CREDENTIAL_PROVIDER` | deploy → runtime | Name of the AgentCore Identity credential provider that performs the IAS OBO exchange. Passed to the runtime as `IAS_PROVIDER_NAME`. |
+| `IAS_CREDENTIAL_PROVIDER` | deploy → runtime | Name of the AgentCore Identity credential provider that performs the SAP Cloud Identity Services OBO exchange. Passed to the runtime as `IAS_PROVIDER_NAME`. |
 | `IAS_KMS_KEY_ID` | deploy | KMS key the runtime role may `kms:Sign` with (for the client assertion). |
-| `IAS_RESOURCE_URN` | reference | Default SAP Agent Gateway audience URN (the live value is in DynamoDB). |
+| `IAS_RESOURCE_URN` | reference | Default SAP's agent gateway audience URN (the live value is in DynamoDB). |
 | `AGENT_CONFIG_TABLE`, `AGENT_CONFIG_KEY` | runtime | DynamoDB table + row the runtime reads live config from. |
 | `CONFIG_CACHE_TTL_SECONDS` | runtime | How long the runtime caches the config row in-process. |
 | `RUNTIME_NAME`, `EXEC_ROLE` | deploy | AgentCore runtime name and its dedicated execution role. |
@@ -100,13 +100,13 @@ cp env.example .envrc
 
 > No secrets live here — the KMS key signs server-side and Cognito values are
 > public. `.envrc` is git-ignored for per-user overrides. See `env.example` for the
-> complete set, including the IAS tenant inputs needed for Step 6
+> complete set, including the SAP Cloud Identity Services tenant inputs needed for Step 6
 > (`IAS_TENANT_URL`, `IAS_DISCOVERY_URL`, `IAS_AUD_CLAIM`, `IAS_CLIENT_ID`) and the
 > output identifiers (runtime ID/ARN) you record as you create resources.
 
 ### Step 1 (AWS) - Create the Amazon Cognito user pool
 
-Cognito authenticates the end user into the Amazon Quick MCP connector and issues the access token that carries the user's `email` forward to IAS.
+Cognito authenticates the end user into the Amazon Quick MCP connector and issues the access token that carries the user's `email` forward to SAP Cloud Identity Services.
 
 1. **Create a user pool** and an **app client** (OAuth 2.0 authorization code + PKCE). Enable the **Hosted UI domain**. Record:
    - Pool id → `COGNITO_USER_POOL_ID`
@@ -116,16 +116,16 @@ Cognito authenticates the end user into the Amazon Quick MCP connector and issue
    ```
    https://<region>.quicksight.aws.amazon.com/sn/oauthcallback
    ```
-3. **Add a pre-token-generation Lambda trigger** that injects `email` and `aud` into the **access** token. A Cognito access token carries neither by default; IAS needs `email` to resolve the user and requires `aud` on the OBO exchange. Set `aud` = `COGNITO_APP_CLIENT_ID`. See [code/info/pre-token-lambda.md](code/info/pre-token-lambda.md) for the function source and how to wire it to the pool (V2 trigger).
-4. **Align the test user with IAS.** The Cognito user's email must match a provisioned IAS user (it becomes the token's `sub` in the OBO exchange).
+3. **Add a pre-token-generation Lambda trigger** that injects `email` and `aud` into the **access** token. A Cognito access token carries neither by default; SAP Cloud Identity Services needs `email` to resolve the user and requires `aud` on the OBO exchange. Set `aud` = `COGNITO_APP_CLIENT_ID`. See [code/info/pre-token-lambda.md](code/info/pre-token-lambda.md) for the function source and how to wire it to the pool (V2 trigger).
+4. **Align the test user with SAP Cloud Identity Services.** The Cognito user's email must match a provisioned SAP Cloud Identity Services user (it becomes the token's `sub` in the OBO exchange).
 
 ---
 
-### Step 2 (SAP) - Add Amazon Cognito as a corporate identity provider in IAS
+### Step 2 (SAP) - Add Amazon Cognito as a corporate identity provider in SAP Cloud Identity Services
 
-Register the Cognito user pool from Step 1 as a **corporate identity provider** in SAP Cloud Identity Services (IAS) so IAS trusts the identities Cognito issues to the end user.
+Register the Cognito user pool from Step 1 as a **corporate identity provider** in SAP Cloud Identity Services so SAP Cloud Identity Services trusts the identities Cognito issues to the end user.
 
-1. Open the **IAS admin console** → **Identity Providers** → **Corporate Identity Providers** → **Create**.
+1. Open the **SAP Cloud Identity Services admin console** → **Identity Providers** → **Corporate Identity Providers** → **Create**.
 2. Set the identity provider **type** to **OpenID Connect Compliant**.
 3. In the **OpenID Connect configuration**, enter the Cognito app client details from Step 1.
 4. Under **Identity Federation → Single Sign-On**, enable **Use Identity Authentication user store**.
@@ -134,8 +134,8 @@ Register the Cognito user pool from Step 1 as a **corporate identity provider** 
 
 ### Step 3 (AWS) - Create the KMS signing key and publish its JWKS
 
-The client assertion that authenticates to IAS is signed inside AWS with a
-KMS key; IAS verifies it against the matching **public** key published at a
+The client assertion that authenticates to SAP Cloud Identity Services is signed inside AWS with a
+KMS key; SAP Cloud Identity Services verifies it against the matching **public** key published at a
 JWKS URL.
 
 #### 1. Create the KMS signing key
@@ -144,7 +144,7 @@ JWKS URL.
 aws kms create-key \
   --key-usage SIGN_VERIFY \
   --key-spec RSA_2048 \
-  --description "IAS client assertion signing key" \
+  --description "SAP Cloud Identity Services client assertion signing key" \
   --region $AWS_REGION
 ```
 
@@ -260,37 +260,37 @@ export JWKS_URL="<s3-url>"
 
 ---
 
-### Step 4 (SAP) - Onboard the AWS agent as an Agent Gateway Consumer in IAS
+### Step 4 (SAP) - Onboard the AWS agent as an SAP's agent gateway Consumer in SAP Cloud Identity Services
 
-Register the AWS agent in **SAP for Me** as an **Agent Gateway Consumer** system, assign it to the three formations, and configure IdP trust in **SAP Cloud Identity Services (IAS)**. Full click-by-click steps are in the SAP documentation:
-→ [Creating an Agent Gateway Consumer System and assigning it to formations](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/a0465991ba964736a781c275ddd852db.html)
+Register the AWS agent in **SAP for Me** as an **SAP's agent gateway Consumer** system, assign it to the three formations, and configure IdP trust in **SAP Cloud Identity Services**. Full click-by-click steps are in the SAP documentation:
+→ [Creating an SAP's agent gateway Consumer System and assigning it to formations](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/a0465991ba964736a781c275ddd852db.html)
 
-1. **Create the Agent Gateway Consumer system** in SAP for Me. Set its **JWKS Endpoint URL** to the JWKS you published in Step 3.
+1. **Create the SAP's agent gateway Consumer system** in SAP for Me. Set its **JWKS Endpoint URL** to the JWKS you published in Step 3.
 2. **Assign the system to the three formations, in the mandatory order.**
-3. **Record** the OIDC application's **client id** (IAS admin console → Applications & Resources → Applications — the application created for this system) → `IAS_CLIENT_ID`, and note your tenant base URL (e.g. `https://<tenant>.accounts.ondemand.com`) and its discovery URL (`/.well-known/openid-configuration`).
-4. **Configure Identity Provider trust** so IAS validates the tokens issued via your IdP (the JWKS/IdP-trust path — no client secret is created):
-   - Log in to the **IAS Administration Console** → **Applications & Resources → Applications**, and open the application created for this system.
+3. **Record** the OIDC application's **client id** (SAP Cloud Identity Services admin console → Applications & Resources → Applications — the application created for this system) → `IAS_CLIENT_ID`, and note your tenant base URL (e.g. `https://<tenant>.accounts.ondemand.com`) and its discovery URL (`/.well-known/openid-configuration`).
+4. **Configure Identity Provider trust** so SAP Cloud Identity Services validates the tokens issued via your IdP (the JWKS/IdP-trust path — no client secret is created):
+   - Log in to the **SAP Cloud Identity Services Administration Console** → **Applications & Resources → Applications**, and open the application created for this system.
    - Go to **Trust → Trust Corporate Identity Providers**, click **Edit**, select the Cognito corporate identity provider you added in Step 2, and click **Save**.
 
 ---
 
-### Step 5 (SAP) - Discover the SAP agent behind Agent Gateway
+### Step 5 (SAP) - Discover the SAP agent behind SAP's agent gateway
 
-Use the Agent Gateway's **Agentic Resource Discovery (ARD)** endpoints to list the available SAP agents and derive the two values this cookbook needs: the agent's A2A endpoint (`gateway_url`) and the Gateway resource URN (`ias.resource_urn`).
+Use the SAP's agent gateway's **Agentic Resource Discovery (ARD)** endpoints to list the available SAP agents and derive the two values this cookbook needs: the agent's A2A endpoint (`gateway_url`) and the Gateway resource URN (`ias.resource_urn`).
 
 Full reference:
 → [Discovering SAP Agents Using Agentic Resource Discovery Endpoints](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/418a00aac347473e866cb7987119b9f9.html)
 
-1. **Get the Agent Gateway base URL** — in SAP for Me → Customer Landscape → Systems, open the **Agent Gateway** system and note its URL (e.g. `https://eu12.access.sapdas.cloud.sap`). This is `<agent-gateway-base-url>`.
-2. **Get a token for the ARD call.** Discovery accepts a **technical token** (client credentials, no logged-in user) — note that invoking an agent later requires a *user* token, not this one. Request it from IAS:
+1. **Get the SAP's agent gateway base URL** — in SAP for Me → Customer Landscape → Systems, open the **SAP's agent gateway** system and note its URL (e.g. `https://eu12.access.sapdas.cloud.sap`). This is `<agent-gateway-base-url>`.
+2. **Get a token for the ARD call.** Discovery accepts a **technical token** (client credentials, no logged-in user) — note that invoking an agent later requires a *user* token, not this one. Request it from SAP Cloud Identity Services:
    ```
-   POST <IAS-tenant-url>/oauth2/token
+   POST <SAP-Cloud-Identity-Services-tenant-url>/oauth2/token
    Content-Type: application/x-www-form-urlencoded
 
    grant_type=client_credentials
    resource=urn:sap:identity:application:provider:name:agent-gateway
-   client_id=<IAS app client id>
-   client_secret=<IAS app client secret>
+   client_id=<SAP-Cloud-Identity-Services app client id>
+   client_secret=<SAP-Cloud-Identity-Services app client secret>
    token_format=jwt
    ```
    Pass the returned token as `Authorization: Bearer <token>` on the ARD request.
@@ -310,7 +310,7 @@ Full reference:
 
 ### Step 6 (AWS) - Create the AgentCore Identity credential provider
 
-Create an OAuth2 credential provider in AgentCore Identity that performs the on-behalf-of token exchange with SAP IAS. Record the `name` you choose → `IAS_CREDENTIAL_PROVIDER`.
+Create an OAuth2 credential provider in AgentCore Identity that performs the on-behalf-of token exchange with SAP Cloud Identity Services. Record the `name` you choose → `IAS_CREDENTIAL_PROVIDER`.
 
 #### 1. Prepare the credential provider configuration
 
@@ -351,18 +351,18 @@ Create a JSON file with the credential provider configuration:
 
 **Replace placeholders:**
 - `<IAS_CREDENTIAL_PROVIDER>`: Your chosen provider name (e.g., "my-ias-provider")
-- `<IAS_TENANT>`: Your IAS tenant name
+- `<IAS_TENANT>`: Your SAP Cloud Identity Services tenant name
 - `<IAS_CLIENT_ID>`: From Step 4
 - `<AWS_REGION>`: Your AWS region
 - `<AWS_ACCOUNT>`: Your AWS account ID
 - `<IAS_KMS_KEY_ID>`: From Step 3
 
 **Key fields:**
-- `discoveryUrl`: IAS tenant OpenID configuration URL
-- `clientId`: IAS app client from Step 4
+- `discoveryUrl`: SAP Cloud Identity Services tenant OpenID configuration URL
+- `clientId`: SAP Cloud Identity Services app client from Step 4
 - `kmsKeyArn`: KMS signing key from Step 3
-- `kid` in `additionalHeaderClaims`: Must match `IAS_KMS_KEY_ID` (so IAS can look up the public key in JWKS)
-- `aud` in `additionalPayloadClaims`: IAS tenant URL
+- `kid` in `additionalHeaderClaims`: Must match `IAS_KMS_KEY_ID` (so SAP Cloud Identity Services can look up the public key in JWKS)
+- `aud` in `additionalPayloadClaims`: SAP Cloud Identity Services tenant URL
 
 Save this as `credential-provider.json`.
 
@@ -419,10 +419,10 @@ Create `agent-config.json` with your runtime configuration:
   "log_level": "INFO",
   "agents": [
     {
-      "id": "joule_finance",
-      "name": "Joule Finance Agent",
-      "description": "Handles purchase orders, invoices, and financial queries",
-      "gateway_url": "https://<tenant>.access.sapdas.cloud.sap/v1/a2a/<ord-id>/<agent-tenant-id>/jsonrpc",
+      "id": "motivational_coach",
+      "name": "SAP Motivational Coach",
+      "description": "Get motivational coaching and encouragement to help you stay motivated and achieve your goals",
+      "gateway_url": "https://eu10.access.sapdas.cloud.sap/v1/a2a/customer.build:agent:motivational-coach-f861a.motivational-coach-agent:v1/CAD777e6fa02c388a0/jsonrpc",
       "aud_urn": null
     }
   ],
@@ -441,7 +441,7 @@ Create `agent-config.json` with your runtime configuration:
 - `agents[].id`: Lowercase alphanumeric identifier
 - `agents[].name`: Human-readable agent name
 - `agents[].description`: What the agent handles (shown to the LLM)
-- `agents[].gateway_url`: From Step 5 (ARD discovery)
+- `agents[].gateway_url`: From Step 5 (ARD discovery) or from your agent deployment
 - `ias.credential_provider_name`: From Step 6
 
 See [**code/info/agent-config.md**](code/info/agent-config.md) for detailed field descriptions.
@@ -568,7 +568,7 @@ can then invoke it directly from the Quick chat interface.
 
 From the Amazon Quick chat interface, ask a question related to the SAP agent. On first run you will be prompted to log in via Cognito.
 
-**Expected:** The connector triggers a Cognito login, forwards the token to the AgentCore Runtime, and returns the SAP agent's answer. CloudWatch logs at `/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT` show the Bedrock tool loop and a successful IAS exchange.
+**Expected:** The connector triggers a Cognito login, forwards the token to the AgentCore Runtime, and returns the SAP agent's answer. CloudWatch logs at `/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT` show the Bedrock tool loop and a successful SAP Cloud Identity Services exchange.
 
 **Terminal validation (alternative to Quick):** If the Cognito app client allows `http://localhost:8765/callback`, the smoke test can be run directly:
 
@@ -583,7 +583,7 @@ python3 tests/integration/run_once.py "show the team compliance trainings"
 [2/3] tools/list     → sap_assistant tool listed
 [3/3] tools/call     → HTTP 200, SAP agent answer received
 ```
-Full chain confirmed: Cognito → Runtime → Bedrock → IAS OBO → SAP Agent Gateway → SAP agent → response.
+Full chain confirmed: Cognito → Runtime → Bedrock → SAP Cloud Identity Services OBO → SAP's agent gateway → SAP agent → response.
 
 ---
 
@@ -599,10 +599,10 @@ Full chain confirmed: Cognito → Runtime → Bedrock → IAS OBO → SAP Agent 
     ├── runtime/
     │   ├── agent.py               ← Bedrock routing brain: one ask_/capabilities_ tool
     │   │                              pair per SAP agent; runs the tool loop
-    │   ├── cis.py                 ← IAS on-behalf-of token exchange via AgentCore
+    │   ├── cis.py                 ← SAP Cloud Identity Services on-behalf-of token exchange via AgentCore
     │   │                              Identity (+ per-user token cache)
     │   ├── sap_gateway.py         ← outbound A2A client: message/send + agent-card fetch
-    │   ├── config.py              ← validated RuntimeConfig schema (model, agents, IAS)
+    │   ├── config.py              ← validated RuntimeConfig schema (model, agents, SAP Cloud Identity Services)
     │   ├── dynamic_config.py      ← reads/caches the live config row from DynamoDB
     │   ├── rate_limit.py          ← per-user sliding-window limiter
     │   └── resume_token.py        ← opaque handle for multi-turn (input-required) tasks
@@ -626,7 +626,7 @@ Full chain confirmed: Cognito → Runtime → Bedrock → IAS OBO → SAP Agent 
 ## Known Limitations
 
 - **Amazon Quick response timeout** - Amazon Quick enforces an ~60-second timeout on connector responses. A long-running SAP query can therefore fail in the Quick chat even when the token exchange and SAP call themselves succeed (the terminal smoke test may still return a result).
-- **Email-matched identities required** - The on-behalf-of exchange resolves the SAP user by `email`, so the user signed in at Cognito (or the federated IdP) and the user provisioned in IAS must share the same email address; a mismatch fails the exchange.
+- **Email-matched identities required** - The on-behalf-of exchange resolves the SAP user by `email`, so the user signed in at Cognito (or the federated IdP) and the user provisioned in SAP Cloud Identity Services must share the same email address; a mismatch fails the exchange.
 - **Cognito access-token claims** - A Cognito access token carries neither `email` nor `aud` by default, both of which the downstream chain needs. A V2 pre-token-generation Lambda must inject them (see [code/info/pre-token-lambda.md](code/info/pre-token-lambda.md)).
 
 ---
@@ -636,6 +636,6 @@ Full chain confirmed: Cognito → Runtime → Bedrock → IAS OBO → SAP Agent 
 - [AWS AgentCore Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html)
 - [RFC 7523 — JWT Profile for OAuth 2.0 Client Authentication (private_key_jwt)](https://www.rfc-editor.org/rfc/rfc7523)
 - [RFC 8693 — OAuth 2.0 Token Exchange](https://www.rfc-editor.org/rfc/rfc8693)
-- [SAP IAS OAuth](https://help.sap.com/docs/identity-authentication)
-- [SAP Agent Gateway](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS)
+- [SAP Cloud Identity Services OAuth](https://help.sap.com/docs/identity-authentication)
+- [SAP's agent gateway](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS)
 - [Amazon Quick MCP](https://docs.aws.amazon.com/quick/latest/userguide/mcp-integration.html)

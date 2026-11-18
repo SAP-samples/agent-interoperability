@@ -248,7 +248,7 @@ aws bedrock-agentcore-control create-agent-runtime \
   --region <region>
 ```
 
-**What it does:** Deploys `mcp_server.py` as a direct-code AgentCore runtime on Python 3.13/ARM64. The JWT authorizer validates inbound Cognito access tokens (issuer = pool, audience = app client, allowed scopes = `openid email profile`). The runtime reads live config from DynamoDB, runs the Bedrock Nova Lite tool loop, and calls SAP Agent Gateway over A2A with the CIS OBO token.
+**What it does:** Deploys `mcp_server.py` as a direct-code AgentCore runtime on Python 3.13/ARM64. The JWT authorizer validates inbound Cognito access tokens (issuer = pool, audience = app client, allowed scopes = `openid email profile`). The runtime reads live config from DynamoDB, runs the Bedrock Nova Lite tool loop, and calls SAP's agent gateway over A2A with the CIS OBO token.
 
 > ⚠️ `allowedScopes` is **required** for the Amazon Quick connector (Task 7). The runtime advertises these scopes during Quick's OAuth discovery; without them Quick falls back to `offline_access` and Cognito rejects the login with `invalid_scope`. The values must match the Cognito app client's `AllowedOAuthScopes`. See [Troubleshooting in ROADMAP.md](../ROADMAP.md#troubleshooting).
 

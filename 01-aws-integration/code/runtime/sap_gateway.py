@@ -1,4 +1,4 @@
-"""Authenticated A2A calls to SAP Agent Gateway.
+"""Authenticated A2A calls to SAP's agent gateway.
 
 The outbound leg of the chain: once the CIS OBO token is in hand, the runtime
 speaks the A2A protocol (JSON-RPC `message/send`) to the SAP agent's endpoint,
@@ -35,11 +35,11 @@ def _call(url: str, token: str, *, body: dict[str, Any] | None = None) -> Any:
             raw = response.read(1_000_001)  # read one byte past the cap to detect overflow
     except HTTPError as exc:
         detail = exc.read(4_000).decode("utf-8", errors="replace")
-        raise SapGatewayError(f"SAP Agent Gateway returned HTTP {exc.code}: {detail}") from exc
+        raise SapGatewayError(f"SAP's agent gateway returned HTTP {exc.code}: {detail}") from exc
     except (TimeoutError, URLError) as exc:
-        raise SapGatewayError("SAP Agent Gateway could not be reached") from exc
+        raise SapGatewayError("SAP's agent gateway could not be reached") from exc
     if len(raw) > 1_000_000:
-        raise SapGatewayError("SAP Agent Gateway response exceeded 1 MB")
+        raise SapGatewayError("SAP's agent gateway response exceeded 1 MB")
     text = raw.decode("utf-8", errors="replace")
     try:
         return json.loads(text)

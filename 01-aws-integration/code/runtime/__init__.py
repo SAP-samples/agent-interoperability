@@ -1,1 +1,1 @@
-"""Full AWS AgentCore runtime for Cognito → CIS → SAP Agent Gateway."""
+"""Full AWS AgentCore runtime for Cognito → CIS → SAP's agent gateway."""
