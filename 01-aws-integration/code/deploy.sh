@@ -59,7 +59,7 @@ EOF
 )
 # Least-privilege policy. The WorkloadToken resource is scoped to THIS runtime's workload
 # identity (\${RUNTIME_NAME}-*), so the platform can mint this runtime's WorkloadAccessToken
-# for the CIS on-behalf-of exchange.
+# for the SAP Cloud Identity Services on-behalf-of exchange.
 POLICY=$(cat <<EOF
 {"Version":"2012-10-17","Statement":[
  {"Sid":"ReadCodeArtifact","Effect":"Allow","Action":["s3:GetObject","s3:GetObjectVersion","s3:ListBucket","s3:GetBucketLocation"],"Resource":["arn:aws:s3:::$BUCKET","arn:aws:s3:::$BUCKET/$S3_PREFIX/*"]},
@@ -119,7 +119,7 @@ else
   echo "    creating new runtime"
   aws bedrock-agentcore-control create-agent-runtime \
     --agent-runtime-name "$RUNTIME_NAME" \
-    --description "LLM-backed MCP front for Quick -> AgentService -> CIS -> SAP" \
+    --description "LLM-backed MCP front for Quick -> AgentService -> SAP Cloud Identity Services -> SAP" \
     --agent-runtime-artifact "$ARTIFACT" \
     --role-arn "$ROLE_ARN" \
     --network-configuration '{"networkMode":"PUBLIC"}' \

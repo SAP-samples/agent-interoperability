@@ -1,13 +1,13 @@
-"""AgentCore Identity-managed CIS token retrieval with in-memory caching.
+"""AgentCore Identity-managed SAP Cloud Identity Services token retrieval with in-memory caching.
 
 This is the on-behalf-of (OBO) step of the identity chain. The runtime never holds
-an CIS client secret or signs an assertion itself: it hands AgentCore Identity the
+an SAP Cloud Identity Services client secret or signs an assertion itself: it hands AgentCore Identity the
 user's WorkloadAccessToken (WAT) and asks it to exchange that for a user-scoped CIS
-token whose audience is SAP Agent Gateway. AgentCore Identity performs the
-`private_key_jwt` client authentication (KMS-signed) against CIS behind the scenes.
+token whose audience is SAP's agent gateway. AgentCore Identity performs the
+`private_key_jwt` client authentication (KMS-signed) against SAP Cloud Identity Services behind the scenes.
 
 Tokens are cached per (user, resource, config fingerprint) until shortly before
-expiry, so a burst of tool calls for the same user reuses one CIS token.
+expiry, so a burst of tool calls for the same user reuses one SAP Cloud Identity Services token.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ class CisExchangeError(RuntimeError):
 
 def _jwt_exp(token: str) -> float | None:
     # Read `exp` from the JWT payload to drive cache expiry. Unverified decode:
-    # the token is validated by its consumer (SAP Agent Gateway), not here.
+    # the token is validated by its consumer (SAP's agent gateway), not here.
     try:
         encoded = token.split(".")[1]
         encoded += "=" * (-len(encoded) % 4)
@@ -48,7 +48,7 @@ class _CachedToken:
 
 
 class CisTokenProvider:
-    """Retrieve CIS OBO tokens through AgentCore Identity."""
+    """Retrieve SAP Cloud Identity Services OBO tokens through AgentCore Identity."""
 
     def __init__(self, max_users: int = 256, refresh_leeway: int = 30) -> None:
         self._max = max_users
@@ -85,9 +85,9 @@ class CisTokenProvider:
                 self._tokens.move_to_end(key)
                 return cached.token
         try:
-            # The OBO exchange: swap the workload token for a user-scoped CIS token.
-            # `resources` sets the audience (SAP Agent Gateway's resource URN) and
-            # token_format=jwt asks CIS for a JWT rather than an opaque token.
+            # The OBO exchange: swap the workload token for a user-scoped SAP Cloud Identity Services token.
+            # `resources` sets the audience (SAP's agent gateway's resource URN) and
+            # token_format=jwt asks SAP Cloud Identity Services for a JWT rather than an opaque token.
             payload = self._client(region).get_resource_oauth2_token(
                 workloadIdentityToken=workload_access_token,
                 resourceCredentialProviderName=config.ias.credential_provider_name,
@@ -99,10 +99,10 @@ class CisTokenProvider:
         except Exception as exc:
             details = getattr(exc, "response", {}).get("Error", {})
             message = str(details.get("Message", type(exc).__name__))[:500]
-            raise CisExchangeError(f"AgentCore Identity CIS exchange failed: {message}") from exc
+            raise CisExchangeError(f"AgentCore Identity SAP Cloud Identity Services exchange failed: {message}") from exc
         token = payload.get("accessToken")
         if not isinstance(token, str) or not token:
-            raise CisExchangeError("AgentCore Identity returned no CIS access token")
+            raise CisExchangeError("AgentCore Identity returned no SAP Cloud Identity Services access token")
         expires_at = _jwt_exp(token) or now + 300  # assume 5 min if the token has no exp
         with self._lock:
             self._tokens[key] = _CachedToken(token, expires_at)

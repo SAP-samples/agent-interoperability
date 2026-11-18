@@ -27,7 +27,7 @@ def test_agent_card_url_derived_from_gateway_url() -> None:
 def test_config_rejects_non_sap_gateway_host() -> None:
     raw = default_config().to_dict()
     raw["agents"][0]["gateway_url"] = "https://evil.example/jsonrpc"
-    with pytest.raises(ValueError, match="SAP Agent Gateway"):
+    with pytest.raises(ValueError, match="SAP's agent gateway"):
         RuntimeConfig.parse(raw)
 
 
