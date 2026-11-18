@@ -77,7 +77,7 @@ Cognito authenticates the end user into the Amazon Quick MCP connector and issue
 
 ## Task 1 (SAP) — Add Amazon Cognito as a corporate identity provider in SAP CIS
 
-Register the Cognito user pool from Task 0 as a **corporate identity provider** in SAP Cloud Identity Services (CIS) so CIS trusts the identities Cognito issues to the end user.
+Register the Cognito user pool from Task 0 as a **corporate identity provider** in CIS (CIS) so CIS trusts the identities Cognito issues to the end user.
 
 1. Open the **CIS admin console** → **Identity Providers** → **Corporate Identity Providers** → **Create**.
 2. Set the identity provider **type** to **OpenID Connect Compliant**.
@@ -105,7 +105,7 @@ JWKS URL.
 
 ## Task 3 (SAP) — Onboard the AWS agent as an SAP's agent gateway Consumer in SAP CIS
 
-Register the AWS agent in **SAP for Me** as an **SAP's agent gateway Consumer** system, assign it to the three formations, and configure IdP trust in **SAP Cloud Identity Services (CIS)**. Full click-by-click steps are in the SAP documentation:
+Register the AWS agent in **SAP for Me** as an **SAP's agent gateway Consumer** system, assign it to the three formations, and configure IdP trust in **CIS (CIS)**. Full click-by-click steps are in the SAP documentation:
 → [Creating an SAP's agent gateway Consumer System and assigning it to formations](https://help.sap.com/docs/CROSS_DOMAIN_AGENTS/4d8be6737cf24797bf753cbcc6e2288f/a0465991ba964736a781c275ddd852db.html)
 
 1. **Create the SAP's agent gateway Consumer system** in SAP for Me. Set its **JWKS Endpoint URL** to the JWKS you published in Task 2.
