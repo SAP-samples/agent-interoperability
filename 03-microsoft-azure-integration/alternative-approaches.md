@@ -40,12 +40,20 @@ Confirm the raw call first in Bruno/curl (a JSON-RPC `message/send` body returns
 
 ### Step 2 - SAP Cloud Identity Services Setup: Trust and User Authorization
 
-> **One-time precondition:** Entra is trusted as a **Corporate Identity Provider** in SAP Cloud Identity Services, and the Entra app Access Token is accepted as a **client assertion** via **Applications → \<agent app\> → Client Authentication → Configure Trust by Issuer** (Issuer = Entra STS `https://sts.windows.net/<tenant>/`, JWKS = `https://login.windows.net/common/discovery/keys`, Subject = Entra app `oid`, Audience = `api://<entra-app-id>`).
+> **One-time preconditions — the exchange validates TWO Entra tokens, and each needs its own trust in SAP Cloud Identity Services:**
+>
+> **(i) The app token (`client_assertion`)** is accepted via **Applications → \<agent app\> → Client Authentication → Configure Trust by Issuer** (Issuer = Entra STS `https://sts.windows.net/<tenant>/`, JWKS = `https://login.windows.net/common/discovery/keys`, Subject = Entra app `oid`, Audience = `api://<entra-app-id>`).
+>
+> **(ii) The user token (`assertion`)** requires Entra wired as a **Corporate Identity Provider** *and* explicitly trusted by the agent app — three settings that must all line up:
+> - **Identity Providers → \<your Entra Corporate IdP\> → OpenID Connect Configuration:** the configured **Issuer must equal the user token's `iss`**. Entra **v2** tokens carry `https://login.microsoftonline.com/<tenant>/v2.0`, so force v2 on the connector's Entra app (**App registration → Manifest → `"requestedAccessTokenVersion": 2`**).
+> - **Identity Providers → \<your Entra Corporate IdP\> → Subject Name Identifier = `Email`** — SCI maps the federated login to a local SCI user by email.
+> - **Applications → \<agent app\> → Trust → Conditional Authentication → Trust Corporate Identity Providers:** the Corporate IdP must be **checked here, on the specific agent app**. Existing at tenant level is **not** enough. Missing → `No trusted corporate IdP found for token issuer`.
 
 The SAP's agent gateway authorizes the **real user** at two layers - a new user is rejected until **both** grants exist. In **SAP Cloud Identity Services Admin Console → Users & Authorizations → User Management**:
 
 **2a - Provision the user in SAP Cloud Identity Services.** (Missing user → `invalid_grant: "User is not authorized for access"` at the OAuth 2.0 Token Exchange.)
 - **+ Add** → name, **Email = the user's Entra email**, **Account Activation = "Set status active"** (no password/mail - login is federated). The incoming Entra Access Token is matched to this SAP Cloud Identity Services user by email.
+- **The match uses the token's `email` claim, which is sourced *only* from the user's primary `mail` attribute** (Entra → user → Contact Information → **Email**), **not** from "Other emails". So: (1) add `email` as an optional claim on the **Access** token (**App registration → Token configuration → Add optional claim → Access → `email`**), and (2) make sure the user's primary `mail` equals this SCI user's email. A mismatch is **not** reported as an auth error — the exchange succeeds, but the gateway then rejects the request with `400 Validation failure for user_uuid: Value may not be undefined or null` (SCI minted a token with no user context).
 
 **2b - Grant the agent's RBAC group.** (Otherwise the agent returns `state:"failed"` / **"403 RBAC: access denied"**.)
 - Open a **working** user's **Groups** tab, note the agent group (e.g. `agent - Access`). Open **your** user → **Groups → Assign** → add that group.
@@ -93,6 +101,8 @@ Then **Create / Update connector**.
 | If you see… | Cause | Fix |
 |---|---|---|
 | `502 … invalid_grant "User is not authorized for access"` | user not provisioned in SAP Cloud Identity Services | Step 2a |
+| `502 … "No trusted corporate IdP found for token issuer"` | the Corporate IdP is not checked on the agent app, or its Issuer ≠ the user token's `iss` | Step 2 precondition (ii) |
+| `400 … "Validation failure for user_uuid: Value may not be undefined or null"` | user token's `email` matches no SCI user (claim absent or ≠ primary `mail`) | Step 2a |
 | `200` but `state:"failed"`, `"403 RBAC: access denied"` | user not in the agent's RBAC group | Step 2b |
 | `400 … "Validation failure for accept-language"` | injected header | script already strips it |
 | `-32600 "Caller could not be resolved to a known tenant, cannot verify mapping to target 'CAD…'"` | server-side: no consumer/tenant→deployment mapping for that CAD (typical after a Joule-Studio re-deploy, which also **rotates the CAD id** in the URL) | SAP side re-establishes the mapping; also confirm the CAD id in your POST URL + swagger is current |
