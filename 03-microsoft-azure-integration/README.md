@@ -72,7 +72,7 @@ Three integration variants are available for calling an agent behind the SAP's a
 
 | | Channel | What it is | Identity | Setup complexity | Wired as |
 |---|---|---|---|---|---|
-| **Approach A** | Back-Channel | Custom connector, **Entra** two-step OAuth 2.0 Token Exchange (user Access Token → Entra app Access Token → SAP's agent gateway Access Token) | Per-user | Requires an Entra app registration | Tool |
+| **Approach A** | Back-Channel | Custom connector, **Entra** two-step OAuth 2.0 Token Exchange (user Access Token → Entra app Access Token → SAP's agent gateway Access Token) | Per-user | Requires an Entra app registration | Add agent |
 | **Approach B** | Front-Channel | Custom connector, **direct SAP Cloud Identity Services OAuth**, single OAuth 2.0 Token Exchange | Per-user | Simplest - no Entra app needed | Tool |
 | **Approach C** | Front-Channel | Native **Connect Agent2Agent** for a BAIP A2A agent that accepts a plain SAP Cloud Identity Services Access Token | Per-user | No SAP's agent gateway OAuth 2.0 Token Exchange needed | Add agent |
 
@@ -92,7 +92,7 @@ Call an SAP agent behind the SAP's agent gateway from Copilot Studio. The connec
 
 **Why Approach B over A:** no Entra app registration, no Entra client-credentials step, no Entra redirect - one SAP Cloud Identity Services client secret, still real per-user principal propagation. The setup is the simplest of the three variants while delivering the same security guarantee.
 
-> This is still a **custom connector = a Tool**. It does **not** go through "Add agent" / Connect Agent2Agent - that dialog is for Approach C. The exchange lives in connector C# code, which exists only on the custom-connector/Tool path.
+> Approach B is wired as a **custom connector = a Tool** (**Tools → + Add a tool → Connector**). The exchange lives in connector C# code.
 
 **Specific prerequisites for this approach:**
 - **SAP's agent gateway access** + the agent identifiers (base URL, ORD id, CAD id).

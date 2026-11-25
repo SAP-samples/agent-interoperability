@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "agw-connector-entra",
-    "description": "SAP Agent Gateway A2A connector template — Entra two-step exchange (Approach A).",
+    "description": "SAP Agent Gateway A2A connector template — Entra two-step exchange (Approach A). Carries the x-ms-agentic-protocol marker so the connector is attachable as a native A2A agent in Copilot Studio.",
     "version": "1.0"
   },
   "host": "<region>.access.sapdas.cloud.sap",
@@ -21,68 +21,29 @@
             "schema": {}
           }
         },
-        "summary": "InvokeA2A",
-        "description": "Send an A2A JSON-RPC message/send request to the agent behind the SAP Agent Gateway.",
+        "x-ms-agentic-protocol": "a2a-1.0",
+        "x-ms-a2a-card-endpoint": "undefined",
+        "x-ms-a2a-card-json": "null\n",
         "operationId": "InvokeA2A",
+        "tags": [
+          "A2A"
+        ],
+        "summary": "InvokeA2A",
+        "description": "Send an A2A JSON-RPC message/send request to the agent behind the SAP Agent Gateway. Copilot Studio's A2A layer builds the JSON-RPC envelope; only the headers below are declared.",
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
+            "name": "Content-Type",
+            "in": "header",
             "required": false,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "jsonrpc": {
-                  "type": "string",
-                  "description": "jsonrpc"
-                },
-                "id": {
-                  "type": "string",
-                  "description": "id"
-                },
-                "method": {
-                  "type": "string",
-                  "description": "method"
-                },
-                "params": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "object",
-                      "properties": {
-                        "messageId": {
-                          "type": "string",
-                          "description": "messageId"
-                        },
-                        "role": {
-                          "type": "string",
-                          "description": "role"
-                        },
-                        "parts": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "kind": {
-                                "type": "string",
-                                "description": "kind"
-                              },
-                              "text": {
-                                "type": "string",
-                                "description": "text"
-                              }
-                            }
-                          },
-                          "description": "parts"
-                        }
-                      },
-                      "description": "message"
-                    }
-                  },
-                  "description": "params"
-                }
-              }
-            }
+            "type": "string",
+            "default": "application/json"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "type": "string",
+            "default": "en"
           }
         ]
       }
@@ -94,7 +55,7 @@
   "security": [
     {
       "oauth2-auth": [
-        "api://<your-ias-tenant>.accounts400.cloud.sap/access_as_user"
+        "api://<ENTRA_API_APP_ID>/access_as_user"
       ]
     }
   ],
@@ -105,7 +66,7 @@
       "flow": "accessCode",
       "tokenUrl": "https://login.windows.net/common/oauth2/authorize",
       "scopes": {
-        "api://<your-ias-tenant>.accounts400.cloud.sap/access_as_user": "api://<your-ias-tenant>.accounts400.cloud.sap/access_as_user"
+        "api://<ENTRA_API_APP_ID>/access_as_user": "api://<ENTRA_API_APP_ID>/access_as_user"
       },
       "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize"
     }

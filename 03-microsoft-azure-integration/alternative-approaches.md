@@ -18,7 +18,7 @@ Copilot Studio's native A2A auth can only send one plain Bearer token (see [Know
 
 Result: real **[principal propagation](https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/principal-propagation)** - the SAP's agent gateway Access Token carries the actual user (`sub`), `ias_apis: ["external"]`.
 
-> **Custom connector = a Tool, never "Add agent".** Approach A builds a Power Apps **custom connector** and attaches it via **Tools → + Add a tool → Connector**. A custom connector **never** appears in the **Add agent / Connect Agent2Agent** dialog - that dialog lists only native A2A agents (with an agent card) and has **no code step**. The exchange lives in the connector's C# (Code tab), which exists only on the custom-connector/Tool path. The native "Add agent" route is **Approach C** below.
+> **A2A-marked custom connector = attached via "Add agent".** Approach A builds a Power Apps **custom connector** whose OpenAPI carries the `x-ms-agentic-protocol: a2a-1.0` marker (already in the [template swagger](./code/agw-connector-entra.swagger.json)). That marker makes the connector appear in Copilot Studio under **Agents → + Add → Select an agent in your environment**, where it is attached as a native **A2A agent** (Step 5). The two-step OAuth 2.0 Token Exchange still lives in the connector's C# (Code tab). Do **not** use **Connect to an external agent → Agent2Agent** and type the endpoint in by hand — that builds a *different* connector whose token flow is rejected with `401 Invalid JWT`.
 
 ![Back-channel OAuth 2.0 Token Exchange](./images/back-channel.png)
 
@@ -26,7 +26,9 @@ Result: real **[principal propagation](https://help.sap.com/docs/connectivity/sa
 
 - **SAP's agent gateway access** + the target agent's identifiers: base URL, agent ORD id, system/CAD artifact id.
 - **SAP Cloud Identity Services admin** on the third-party-agent application, plus a one-time **trust setup** (Step 2 preconditions).
-- An **Entra app registration** for the connector client, with a client secret and an *Expose an API* scope (`access_as_user`).
+- Two **Entra app registrations** (one app can serve both roles if it has a secret *and* the exposed scope):
+  - a **connector client app** `<ENTRA_CLIENT_APP_ID>` with a **client secret** — used for the `client_credentials` grant in the connector code; and
+  - an **API app** `<ENTRA_API_APP_ID>` that exposes an *Expose an API* scope `access_as_user` — used as the OAuth **Resource** the signed-in user's token is issued for.
 - A **Copilot Studio** environment where custom connectors are allowed, and a user who can sign in to that Entra tenant.
 
 ### Step 1 - Gather the SAP Agent Details
@@ -62,7 +64,7 @@ The SAP's agent gateway authorizes the **real user** at two layers - a new user 
 
 ### Step 3 - Create the Custom Connector in Power Apps
 
-> **Shortcut:** **Create → Import an OpenAPI file** and pick [`./code/agw-connector-entra.swagger.json`](./code/agw-connector-entra.swagger.json) - it scaffolds General (host/base path), the `InvokeA2A` POST action, and the OAuth security definition. After import, replace host, path IDs and scope with your own, then do 3b (secret) and 3d (code).
+> **Shortcut:** **Create → Import an OpenAPI file** and pick [`./code/agw-connector-entra.swagger.json`](./code/agw-connector-entra.swagger.json) - it scaffolds General (host/base path), the `InvokeA2A` **A2A operation** (carrying `x-ms-agentic-protocol: a2a-1.0`, so the connector is attachable via **Add agent** in Step 5), and the OAuth security definition. After import, replace the host, the path IDs, and the `api://<ENTRA_API_APP_ID>` resource/scope with your own, then do 3b (secret) and 3d (code).
 
 **3a - General:** Scheme `HTTPS`, Host `<base>`, Base URL `/`.
 
@@ -70,25 +72,21 @@ The SAP's agent gateway authorizes the **real user** at two layers - a new user 
 
 | Field | Value |
 |---|---|
-| Client ID | your Entra app |
+| Client ID | the **connector client app** id `<ENTRA_CLIENT_APP_ID>` |
 | Secret options | Client secret |
-| Client secret | your client secret |
+| Client secret | that app's client secret |
 | Authorization URL | `https://login.microsoftonline.com` |
 | Tenant ID | your Entra tenant |
-| Resource URL | `api://<your-sci-tenant>.accounts400.cloud.sap` |
+| Resource URL | `api://<ENTRA_API_APP_ID>` (the API app that exposes `access_as_user`) |
 | Enable on-behalf-of login | `true` |
-| Scope | `api://<your-sci-tenant>.accounts400.cloud.sap/access_as_user` |
+| Scope | `api://<ENTRA_API_APP_ID>/access_as_user` |
 
 After saving, copy the generated **Redirect URL** (`https://global.consent.azure-apim.net/redirect/…`) into the Entra app's **Redirect URIs**.
 
-**3c - Definition:** **+ New action** `InvokeA2A`. **Request → Import from sample:** Verb `POST`, **URL** = your Agent (POST) URL, **Header** `Content-Type: application/json`, **Body**:
-```json
-{"jsonrpc":"2.0","id":"test-1","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"Tell me a finance joke"}],"messageId":"msg-1","kind":"message"}}}
-```
-Then **Add default response** (`{}` is fine). Do **not** add an `Authorization` header - the C# sets it.
+**3c - Definition:** If you imported the template swagger, `InvokeA2A` is already defined as an **A2A operation** (`x-ms-agentic-protocol: a2a-1.0`) with only `Content-Type` and `Accept-Language` **header** parameters and **no body parameter** — Copilot Studio's A2A layer builds the JSON-RPC `message/send` envelope itself. Do **not** add an `Authorization` header (the C# sets it) and do **not** add a body parameter.
 > The path contains colons (`…customer.build:agent:…`). Verify it stayed one literal segment (no `{param}` generated).
 
-**3d - Code:** toggle **Code Enabled**, select operation `InvokeA2A`, paste [`./code/agw-connector-entra.csx`](./code/agw-connector-entra.csx). In a **local-only copy** fill the placeholders (`ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_TENANT_ID`, `ENTRA_SCOPE`, `SCI_TOKEN_URL`, `SCI_CLIENT_ID`); keep `SCI_RESOURCE_URN`. **Never commit real values.**
+**3d - Code:** toggle **Code Enabled**, select operation `InvokeA2A`, paste [`./code/agw-connector-entra.csx`](./code/agw-connector-entra.csx). In a **local-only copy** fill the placeholders — `ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET` are the **connector client app** `<ENTRA_CLIENT_APP_ID>` and its secret, `ENTRA_SCOPE` stays `api://<ENTRA_CLIENT_APP_ID>/.default`, plus `ENTRA_TENANT_ID`, `SCI_TOKEN_URL`, `SCI_CLIENT_ID`; keep `SCI_RESOURCE_URN`. (The API app `<ENTRA_API_APP_ID>` appears only in the swagger security, not in code.) **Never commit real values.**
 
 The script: (1) reads the incoming Entra Access Token; (2) `client_credentials` → Entra app Access Token; (3) SAP Cloud Identity Services OAuth 2.0 Token Exchange (`assertion` = user Access Token, `client_assertion` = app Access Token, `resource` = agent-gateway URN) → SAP's agent gateway Access Token; sets `Authorization: Bearer`, strips the Power-Platform `accept-language` header, forwards.
 
@@ -106,34 +104,25 @@ Then **Create / Update connector**.
 | `200` but `state:"failed"`, `"403 RBAC: access denied"` | user not in the agent's RBAC group | Step 2b |
 | `400 … "Validation failure for accept-language"` | injected header | script already strips it |
 | `-32600 "Caller could not be resolved to a known tenant, cannot verify mapping to target 'CAD…'"` | server-side: no consumer/tenant→deployment mapping for that CAD (typical after a Joule-Studio re-deploy, which also **rotates the CAD id** in the URL) | SAP side re-establishes the mapping; also confirm the CAD id in your POST URL + swagger is current |
-| `Invalid JSON-RPC Request` (in Copilot, not here) | `jsonrpc` serialized as `2` not `"2.0"` | use a Formula in Step 5 |
+| `Entity 'connector' With Id = <guid> Does Not Exist` (in Copilot when attaching the agent) | Power-Platform sync lag after editing the connector's swagger to add the A2A markers | wait ~10–15 min and retry; the connector data is intact (the swagger still downloads). Re-import fresh only if it persists |
 
-### Step 5 - Create the Copilot Agent and Add the Tool
+### Step 5 - Add the Connector as an Agent in Copilot Studio
 
-1. **Copilot Studio → Create → New agent** (same environment), name it, Create.
-2. **Tools → + Add a tool → Connector →** your connector → `InvokeA2A` → **Add and configure** → pick the connection from Step 4.
-3. **Description:** describe when to call it, e.g. *"Calls the SAP agent via SAP's agent gateway (A2A). Use whenever the user asks for …"*
-4. **Inputs:**
+Because the connector carries `x-ms-agentic-protocol: a2a-1.0`, it is attached as a **native A2A agent** (not as a Tool):
 
-   | Input | Fill using | Value |
-   |---|---|---|
-   | `parts` | **Dynamically fill with AI** | - (the user's question) |
-   | `method` | Custom value | `message/send` |
-   | `jsonrpc` | **Custom value → Formula** | `"2.0"` **must be a Formula.** A plain custom value is coerced to the number `2` → gateway `"Invalid JSON-RPC Request"`. |
-   | `id` | Custom value | `test-1` |
-   | `messageId` | Custom value | `msg-1` |
-   | `role` | Custom value | `user` |
+1. **Copilot Studio → Create → New agent** (same environment), name it, Create. Wait until provisioning finishes.
+2. **Agents → + Add → Select an agent in your environment →** pick your connector (it shows an **A2A** badge). Do **not** use *Connect to an external agent → Agent2Agent*, and do **not** type the endpoint in by hand.
+3. **Connection → Create new connection →** sign in with your Entra user (Step 2) → the connection turns green → **Add and configure**.
+4. **Credentials to use = "End user credentials"** (per-user principal propagation).
+5. **Save.** The agent now appears under **Agents**, Enabled.
 
-5. **Additional details → Credentials to use = "End user credentials"** (per-user principal propagation).
-6. **Agent → Overview → Instructions → Edit:**
-   > When you call the tool, answer only with the text in `result.artifacts[0].parts[0].text`. If it fails or returns a connection/auth prompt, say so and do NOT invent an answer.
-7. **Save.**
+> No tool inputs and no `jsonrpc` Formula are needed on this path — Copilot Studio's A2A layer builds the JSON-RPC `message/send` envelope itself, and the `accept-language` header it injects is stripped by the connector C# (Step 3d).
 
 ### Step 6 - Test from Copilot and Verify Authenticity
 
-Ask the agent to use the tool.
-- The **first** call per session may hit a one-time **"Let's get you connected first"** consent → **Open connection manager → Submit → Retry**.
-- **Prove it's real, not hallucinated:** open the tool node in the test flow and read its Outputs.
+In the **Test your agent** panel, send a warm-up `hi`, then a real request (e.g. *"give me some motivation"*).
+- The **first** call per session may hit a one-time **"Let's get you connected first"** consent → **Open connection manager → Submit → Retry**. A first attempt can also fail while the A2A connection warms up — just resend.
+- **Prove it's real, not hallucinated:** the answer should carry per-user context (e.g. the signed-in user's name), and the step's **Execution summary** shows *"A2A agent execution completed"*.
 
 > **Residual secret:** the Entra client secret stays in the connector C# (it can't be removed inside the connector sandbox - no managed identity reachable from ScriptBase). See the main [README - Known Limitations](./README.md#known-limitations).
 
